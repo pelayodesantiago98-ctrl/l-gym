@@ -92,3 +92,6 @@ toca la instalación real ni su base de datos.
 La copia va en `/var/tmp` y no en `/tmp`: `/tmp` aquí es un tmpfs de 921 MB
 sobre 1,8 GB de RAM y no le caben ni las dependencias.
 
+## Licencia
+
+GPL-3.0. Ver [LICENSE](LICENSE).
