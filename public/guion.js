@@ -195,6 +195,9 @@ function filaCalentamiento(e) {
   }));
   if (e.notas) li.append(crear('p', 'mov-notas', e.notas));
   li.classList.toggle('hecho', marcaDe(e.id));
+  // Los de la rutina diaria se distinguen: si no, no se entiende por qué
+  // aparecen los mismos tres movimientos en todos los grupos.
+  li.classList.toggle('diario', Boolean(e.diario));
   return li;
 }
 
@@ -318,12 +321,31 @@ function pintarEditor() {
   cont.replaceChildren();
   if (!estado.rutina) return;
 
+  if (estado.rutina.diario) cont.append(bloqueDiario(estado.rutina.diario));
+
   if (!estado.rutina.grupos.length) {
     cont.append(crear('p', 'nota', 'Todavía no hay grupos. Crea el primero arriba.'));
     return;
   }
 
   estado.rutina.grupos.forEach((g) => cont.append(bloqueGrupo(g)));
+}
+
+/*
+ * El calentamiento de todos los días. Por dentro es un grupo, pero aquí no se
+ * renombra ni se borra: no es "uno más", es el que se cuela en los demás.
+ */
+function bloqueDiario(g) {
+  const sec = crear('section', 'grupo grupo-diario');
+
+  const cab = crear('header', 'grupo-cabecera');
+  cab.append(crear('h2', 'grupo-nombre', 'Calentamiento diario'));
+  sec.append(cab);
+
+  sec.append(crear('p', 'nota',
+    'Sale al principio del calentamiento de todos los grupos, antes del suyo propio.'));
+  sec.append(subLista(g, 'calentamiento', 'Movimientos'));
+  return sec;
 }
 
 function bloqueGrupo(g) {

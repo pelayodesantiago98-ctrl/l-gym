@@ -82,14 +82,37 @@ CREATE INDEX IF NOT EXISTS idx_series_ejercicio ON series (ejercicio_id);
 if (!db.prepare('PRAGMA table_info(sesiones)').all().some((c) => c.name === 'terminada')) {
   db.exec('ALTER TABLE sesiones ADD COLUMN terminada TEXT');
 }
+if (!db.prepare('PRAGMA table_info(grupos)').all().some((c) => c.name === 'diario')) {
+  db.exec('ALTER TABLE grupos ADD COLUMN diario INTEGER NOT NULL DEFAULT 0');
+}
 
 const ahora = () => new Date().toISOString();
 
 // ------------------------------------------------------------------ grupos
 
+// El del calentamiento diario queda fuera: no es un grupo que se elija, es el
+// que se cuela en todos los demás.
 const listarGrupos = (dueno) => db.prepare(
-  'SELECT * FROM grupos WHERE dueno = ? ORDER BY orden, nombre'
+  'SELECT * FROM grupos WHERE dueno = ? AND diario = 0 ORDER BY orden, nombre'
 ).all(dueno);
+
+/*
+ * El calentamiento diario, guardado como un grupo con diario = 1. Se crea la
+ * primera vez que se pregunta por él: así hereda el editor, las fotos y el
+ * orden de los ejercicios sin una segunda tabla que hiciera lo mismo.
+ *
+ * orden = -1 para que, si alguna consulta futura los mezcla, salga el primero.
+ */
+function grupoDiario(dueno) {
+  let g = db.prepare('SELECT * FROM grupos WHERE dueno = ? AND diario = 1').get(dueno);
+  if (!g) {
+    const r = db.prepare(
+      'INSERT INTO grupos (dueno, nombre, orden, creado, diario) VALUES (?, ?, -1, ?, 1)'
+    ).run(dueno, 'Calentamiento diario', ahora());
+    g = db.prepare('SELECT * FROM grupos WHERE id = ?').get(r.lastInsertRowid);
+  }
+  return g;
+}
 
 function crearGrupo(dueno, nombre) {
   const orden = db.prepare(
@@ -182,6 +205,25 @@ function sesionDe(dueno, fecha, grupoId) {
 
 const marcasDe = (sesionId) =>
   db.prepare('SELECT ejercicio_id, hecho FROM marcas WHERE sesion_id = ?').all(sesionId);
+
+/*
+ * Marcas de unos ejercicios en CUALQUIER sesión del mismo día.
+ *
+ * El calentamiento diario se hace una vez, no una por grupo. Quien entrene
+ * pecho por la mañana y pierna por la tarde tiene que ver por la tarde que ya
+ * lo hizo, y no volver a mirarse una lista de tres cosas preguntándose si las
+ * hizo. MAX(hecho) porque basta con haberlo marcado en una.
+ */
+function marcasDelDia(dueno, fecha, ids) {
+  if (!ids.length) return [];
+  const huecos = ids.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT m.ejercicio_id, MAX(m.hecho) AS hecho
+    FROM marcas m JOIN sesiones s ON s.id = m.sesion_id
+    WHERE s.dueno = ? AND s.fecha = ? AND m.ejercicio_id IN (${huecos})
+    GROUP BY m.ejercicio_id
+  `).all(dueno, fecha, ...ids);
+}
 
 const seriesDe = (sesionId) => db.prepare(
   'SELECT ejercicio_id, numero, peso, repeticiones, hecho FROM series WHERE sesion_id = ? ORDER BY numero'
@@ -301,10 +343,11 @@ const records = (dueno) => db.prepare(`
 
 module.exports = {
   db,
-  listarGrupos, crearGrupo, grupo, renombrarGrupo, borrarGrupo,
+  listarGrupos, crearGrupo, grupo, renombrarGrupo, borrarGrupo, grupoDiario,
   listarEjercicios, ejercicio, crearEjercicio, editarEjercicio,
   ponerImagen, borrarEjercicio, moverEjercicio,
-  sesionDe, marcasDe, seriesDe, marcar, guardarSerie, quitarSerie, guardarNotas, terminar, ultimaVezDe,
+  sesionDe, marcasDe, marcasDelDia, seriesDe, marcar, guardarSerie, quitarSerie,
+  guardarNotas, terminar, ultimaVezDe,
   historial, progresoDe, resumen, records,
 };
 

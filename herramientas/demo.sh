@@ -46,6 +46,13 @@ for c in "Bici suave 5 min" "Movilidad de hombro" "Rotaciones con banda"; do
   api POST /api/ejercicios "{\"grupo_id\":$G,\"tipo\":\"calentamiento\",\"nombre\":\"$c\"}" > /dev/null
 done
 
+# El calentamiento diario, que sale en todos los grupos. Su "grupo" se crea
+# solo la primera vez que se pregunta por la rutina.
+D=$(curl -s "$B/api/rutina" | python3 -c 'import sys,json;print(json.load(sys.stdin)["diario"]["id"])')
+for c in "Movilidad de cadera" "Plancha 30 s"; do
+  api POST /api/ejercicios "{\"grupo_id\":$D,\"tipo\":\"calentamiento\",\"nombre\":\"$c\"}" > /dev/null
+done
+
 crear_ej() {
   api POST /api/ejercicios "{\"grupo_id\":$G,\"tipo\":\"ejercicio\",\"nombre\":\"$1\",\"series\":$2,\"notas\":\"$3\"}" \
     | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])'

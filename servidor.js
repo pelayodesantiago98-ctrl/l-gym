@@ -74,9 +74,11 @@ app.post('/salir', (req, res) => {
 
 app.get('/api/rutina', (req, res) => {
   const grupos = bd.listarGrupos(quien(req));
+  const d = bd.grupoDiario(quien(req));
   res.json({
     hoy: hoy(),
     usuario: req.sesion.nombre,
+    diario: { ...d, ejercicios: bd.listarEjercicios(d.id) },
     grupos: grupos.map((g) => ({ ...g, ejercicios: bd.listarEjercicios(g.id) })),
   });
 });
@@ -97,6 +99,11 @@ app.patch('/api/grupos/:id', (req, res) => {
 });
 
 app.delete('/api/grupos/:id', (req, res) => {
+  // El del calentamiento diario no se borra: la pantalla no ofrece el botón,
+  // pero la ruta no debería fiarse de eso.
+  const g = bd.grupo(quien(req), Number(req.params.id));
+  if (g && g.diario) return res.status(400).json({ error: 'no-se-borra' });
+
   if (!bd.borrarGrupo(quien(req), Number(req.params.id))) {
     return res.status(404).json({ error: 'no-existe' });
   }
@@ -199,7 +206,25 @@ app.get('/api/sesion', (req, res) => {
   if (!g) return res.status(404).json({ error: 'grupo' });
 
   const s = bd.sesionDe(quien(req), fecha, grupoId);
-  const ejercicios = bd.listarEjercicios(grupoId);
+
+  /*
+   * El calentamiento diario va por delante del propio del grupo, y marcado
+   * como tal para que la pantalla pueda decir de dónde sale sin deducirlo del
+   * id del grupo. Solo se cuelan los de tipo calentamiento: si algún día se
+   * mete un ejercicio con series ahí dentro, no tiene sentido repetirlo.
+   */
+  const d = bd.grupoDiario(quien(req));
+  const diarios = bd.listarEjercicios(d.id)
+    .filter((e) => e.tipo === 'calentamiento')
+    .map((e) => ({ ...e, diario: 1 }));
+  const ejercicios = [...diarios, ...bd.listarEjercicios(grupoId)];
+
+  // Para los diarios manda lo del día entero, no lo de esta sesión.
+  const idsDiarios = diarios.map((e) => e.id);
+  const enDiarios = new Set(idsDiarios);
+  const marcas = bd.marcasDe(s.id)
+    .filter((m) => !enDiarios.has(m.ejercicio_id))
+    .concat(bd.marcasDelDia(quien(req), fecha, idsDiarios));
 
   // Lo de la última vez, para proponerlo de partida. Va aparte de `series` a
   // propósito: es una sugerencia, no algo guardado, y no debe contar en el
@@ -215,7 +240,7 @@ app.get('/api/sesion', (req, res) => {
     sesion: s,
     grupo: g,
     ejercicios,
-    marcas: bd.marcasDe(s.id),
+    marcas,
     series: bd.seriesDe(s.id),
     ultimaVez,
   });

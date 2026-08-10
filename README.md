@@ -67,6 +67,25 @@ Todo lo pulsable comparte el mismo anillo de foco y se hunde un píxel al
 pulsarlo: en el móvil, sin hover, es la única señal de que el toque ha
 entrado.
 
+## El calentamiento diario
+
+Aparte del calentamiento propio de cada grupo hay uno **diario**: se configura
+una vez en Rutinas y sale al principio de todos los grupos, antes del suyo.
+
+Por dentro **es un grupo más**, con la marca `diario = 1` y fuera del listado.
+Así hereda tal cual el editor, las fotos, las notas y el orden de los
+ejercicios, en vez de una segunda tabla que hiciera exactamente lo mismo. Se
+crea solo la primera vez que se pide la rutina, y la API se niega a borrarlo
+aunque la pantalla no ofrezca el botón.
+
+**Marcarlo vale para todo el día, no para una sesión.** Quien entrene pecho
+por la mañana y pierna por la tarde ve por la tarde que ya lo hizo. Las marcas
+de los diarios se leen de cualquier sesión del mismo día con `MAX(hecho)`, en
+vez de la sesión que se esté mirando.
+
+En la pantalla de entreno llevan una etiqueta *diario*: sin ella, ver los
+mismos tres movimientos en todos los grupos parece un fallo.
+
 ## El menú de la foto
 
 La foto de perfil de la barra **es** el botón del menú. No hay tres rayas al
@@ -134,7 +153,8 @@ una sesión ya cerrada.
 ## Datos
 
 ```
-grupos      un grupo muscular, por dueño
+grupos      un grupo muscular, por dueño; `diario = 1` marca el que lleva
+            el calentamiento de todos los días y no se lista
 ejercicios  del grupo; tipo = calentamiento | ejercicio; con foto opcional
 sesiones    un día + un grupo (única por dueño, fecha y grupo);
             `terminada` guarda cuándo se cerró, o null si sigue abierta

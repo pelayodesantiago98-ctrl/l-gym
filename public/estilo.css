@@ -335,6 +335,31 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
 }
 .mov-nombre { font-weight: 600; }
 
+/* De dónde sale este calentamiento. Sin la etiqueta, ver los mismos tres
+   movimientos en todos los grupos parece un fallo. */
+.mov.diario .mov-nombre::after {
+  content: 'diario';
+  margin-left: .5rem;
+  padding: .1rem .4rem;
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  font-size: .65rem;
+  font-weight: 400;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+  vertical-align: .1em;
+  /* Al marcar, el nombre se tacha, y la tachadura se propaga a los hijos: un
+     `text-decoration: none` aquí NO la quita, la especificación no lo permite.
+     Lo que sí funciona es sacar la etiqueta del flujo de texto haciéndola
+     inline-block; entonces es una caja atómica y la raya no la cruza. */
+  display: inline-block;
+}
+
+/* El bloque del editor, marcado por el lado para que no se confunda con un
+   grupo muscular más de la lista. */
+.grupo-diario { border-left: 3px solid var(--acento-apagado); }
+
 .mov-foto {
   width: 52px;
   height: 52px;
