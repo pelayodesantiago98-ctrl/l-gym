@@ -91,6 +91,10 @@ button, input, select, textarea { font: inherit; }
 .avatar-boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 .avatar-boton[aria-expanded=true] .avatar { box-shadow: 0 0 0 2px var(--acento); }
 
+/* Explicito: `display: grid` de aqui abajo pisa el [hidden]{display:none} de
+   la hoja del navegador, y el menu se quedaba abierto para siempre. */
+.menu[hidden] { display: none; }
+
 .menu {
   position: absolute;
   right: 0;
@@ -171,18 +175,66 @@ input, select, textarea {
 }
 textarea { resize: vertical; }
 
-/* El icono del calendario y el del desplegable se pintan en negro sobre fondo
-   oscuro y se vuelven invisibles. */
-input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .6; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+  border-color: var(--acento);
+}
 
-/* 24 px de casilla: la de serie hay que marcarla con el pulgar y sudando. */
+/* Que el navegador sepa que esto es oscuro: sin esto pinta en claro el
+   desplegable del <select>, el calendario del <input type=date> y las flechas
+   de los campos numericos. */
+:root { color-scheme: dark; }
+
+/* Con color-scheme: dark el navegador ya lo pinta claro; solo se baja un poco
+   para que no compita con el propio dato. Antes llevaba filter: invert(1),
+   que ahora lo dejaria negro otra vez. */
+input[type=date]::-webkit-calendar-picker-indicator { opacity: .6; }
+
+/* 24 px de casilla: la de serie hay que marcarla con el pulgar y sudando.
+ *
+ * Dibujada a mano en vez de con accent-color, que solo tiñe el relleno de la
+ * casilla MARCADA: sin marcar el navegador sigue pintando su cuadrado blanco,
+ * y sobre un fondo casi negro son manchas de tiza. Poner `background` no
+ * sirve: un control con aspecto nativo lo ignora. */
 input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
   width: 24px;
   height: 24px;
-  accent-color: var(--acento);
+  flex: none;
   padding: 0;
+  margin: 0;
+  border: 2px solid var(--linea);
+  border-radius: 7px;
+  background: var(--superficie-alta);
   cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: background-color .12s ease, border-color .12s ease;
 }
+input[type=checkbox]:hover { border-color: var(--tinta-3); }
+input[type=checkbox]:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+input[type=checkbox]:checked {
+  background: var(--acento);
+  border-color: var(--acento);
+}
+
+/* La marca: dos lados de un cuadrado girados 45 grados. Sale mas nitida a
+ * cualquier tamaño que un carácter de tipografía, que cambia según el
+ * sistema. En var(--fondo) porque va encima del azul claro. */
+input[type=checkbox]::after {
+  content: '';
+  width: 6px;
+  height: 11px;
+  margin-top: -2px;
+  border: solid var(--fondo);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform .12s ease;
+}
+input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
 
 .cabecera-dia { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
 
@@ -197,12 +249,32 @@ input[type=checkbox] {
   background: var(--superficie-alta);
   color: var(--tinta);
   white-space: nowrap;
+  transition: background-color .12s ease, border-color .12s ease;
 }
+/* Un mismo anillo de foco en todo: el teclado tiene que verse igual de bien
+   que el dedo. */
+.boton:focus-visible, .boton-lino:focus-visible, .boton-peligro:focus-visible,
+.pestana:focus-visible, .avatar-boton:focus-visible, .menu-opcion:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+/* Hundirse un pixel al pulsar: en el movil, sin hover, es la unica pista de
+   que el toque ha entrado. */
+.boton:active, .boton-lino:active, .boton-peligro:active { transform: translateY(1px); }
+
 .boton { background: var(--acento-apagado); border-color: var(--acento-apagado); }
-.boton:hover { background: #26647f; }
+.boton:hover { background: #26647f; border-color: #26647f; }
 .boton-lino:hover { border-color: var(--tinta-3); }
 .boton-peligro { color: var(--peligro); }
 .boton-peligro:hover { border-color: var(--peligro); }
+
+/* Deshabilitado: se apaga y deja de invitar. Lo usa el boton de guardar
+   mientras la peticion esta en vuelo. */
+.boton[disabled], .boton-lino[disabled], .boton-peligro[disabled] {
+  opacity: .5;
+  cursor: default;
+  transform: none;
+}
 
 .cierre { display: grid; gap: .6rem; justify-items: center; text-align: center; }
 .cierre .resumen { margin: 0; color: var(--tinta-2); font-size: .9rem; }

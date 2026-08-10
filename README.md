@@ -41,6 +41,32 @@ semana pasada, y el progreso mentiría.
 `ultimaVezDe()` solo mira series con `hecho = 1` y de fechas **anteriores** a
 la de hoy, así que abrir el mismo día dos veces no se sugiere a sí mismo.
 
+## Casillas y botones
+
+Las casillas están **dibujadas**, no son las del navegador. Antes llevaban
+`accent-color`, que solo tiñe el relleno de la casilla marcada: sin marcar, el
+navegador seguía pintando su cuadrado blanco de siempre, y sobre un fondo casi
+negro eran manchas de tiza. Poner `background` no arregla nada, porque un
+control con aspecto nativo lo ignora: hay que quitárselo con
+`appearance: none` y pintarlo.
+
+La marca es un cuadrado girado 45 grados al que se le dejan dos lados. Sale
+más nítida a cualquier tamaño que un carácter de tipografía, que además cambia
+según el sistema.
+
+Siguen midiendo 24 px: la casilla de una serie hay que marcarla con el pulgar
+y sudando.
+
+`color-scheme: dark` en la raíz es lo que hace que el navegador pinte en
+oscuro lo que no controla la hoja de estilos: el desplegable del `<select>`,
+el calendario del `<input type=date>` y las flechas de los campos numéricos.
+Al ponerlo hubo que **quitar** el `filter: invert(1)` del icono del
+calendario, que ya no hacía falta y lo devolvía a negro.
+
+Todo lo pulsable comparte el mismo anillo de foco y se hunde un píxel al
+pulsarlo: en el móvil, sin hover, es la única señal de que el toque ha
+entrado.
+
 ## El menú de la foto
 
 La foto de perfil de la barra **es** el botón del menú. No hay tres rayas al
@@ -56,7 +82,12 @@ Que en móvil se muden al menú no es solo estética: antes la fila de pestañas
 se iba a una segunda línea a todo lo ancho, y esa fila se come alto de barra
 pegajosa justo en el aparato donde menos sobra.
 
-El menú se cierra tocando fuera y con Escape. Sin eso, en el móvil un menú
+El menú se oculta con el atributo `hidden`, y hace falta un
+`.menu[hidden] { display: none }` explícito: el `display: grid` de la hoja
+del proyecto pisa el `[hidden] { display: none }` del navegador —gana la del
+autor— y sin esa línea el menú se queda abierto para siempre.
+
+Se cierra tocando fuera y con Escape. Sin eso, en el móvil un menú
 abierto por error solo se quita eligiendo algo.
 
 ## Guardar el entreno
