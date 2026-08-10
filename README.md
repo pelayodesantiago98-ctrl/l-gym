@@ -94,4 +94,27 @@ sobre 1,8 GB de RAM y no le caben ni las dependencias.
 
 ## Licencia
 
-GPL-3.0. Ver [LICENSE](LICENSE).
+Este proyecto se distribuye bajo la **GNU General Public License v3.0**. El texto
+completo está en [LICENSE](LICENSE).
+
+    L-gym — rutinas de gimnasio y progreso en el tiempo
+    Copyright (C) 2026 Lepayo (@pelayodesantiago98-ctrl)
+
+    Este programa es software libre: puedes redistribuirlo y/o modificarlo
+    bajo los términos de la GNU General Public License, en su versión 3,
+    tal y como la publica la Free Software Foundation.
+
+    Se distribuye con la esperanza de que resulte útil, pero SIN NINGUNA
+    GARANTÍA; ni siquiera la garantía implícita de COMERCIABILIDAD o
+    IDONEIDAD PARA UN PROPÓSITO PARTICULAR. Consulta la GNU General Public
+    License para más detalles.
+
+    Deberías haber recibido una copia de la GNU General Public License junto
+    a este programa. Si no es así, mírala en <https://www.gnu.org/licenses/>.
+
+Qué significa en la práctica: puedes usarlo, estudiarlo, modificarlo y
+redistribuirlo; si distribuyes una versión modificada, tienes que publicar su
+código con esta misma licencia.
+
+Las rutinas, los pesos y las fotos de ejercicios no están en el repositorio:
+son de quien use la instalación.
