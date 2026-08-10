@@ -14,6 +14,8 @@ mano. La configuración del servidor vive en
 |---|---|---|
 | ![](assets/screenshots/entreno.png) | ![](assets/screenshots/rutinas.png) | ![](assets/screenshots/movil.png) |
 
+<p align="center"><img src="assets/screenshots/menu.png" width="380" alt="El menú desplegado desde la foto de perfil"></p>
+
 ## La idea
 
 Una **rutina** por grupo muscular (pecho y tríceps, espalda y bíceps, pierna…).
@@ -38,6 +40,24 @@ semana pasada, y el progreso mentiría.
 
 `ultimaVezDe()` solo mira series con `hecho = 1` y de fechas **anteriores** a
 la de hoy, así que abrir el mismo día dos veces no se sugiere a sí mismo.
+
+## El menú de la foto
+
+La foto de perfil de la barra **es** el botón del menú. No hay tres rayas al
+lado: serían dos controles compitiendo por el mismo sitio y por la misma idea
+—«aquí están tus cosas»—, y la foto la sirve el portal, así que ya identifica
+la sesión.
+
+Dentro está **Volver al portal**, y en móvil también las tres secciones. En
+pantalla ancha las secciones siguen siendo pestañas y repetirlas en el menú
+sería ruido; se ocultan con una media query, no con JavaScript.
+
+Que en móvil se muden al menú no es solo estética: antes la fila de pestañas
+se iba a una segunda línea a todo lo ancho, y esa fila se come alto de barra
+pegajosa justo en el aparato donde menos sobra.
+
+El menú se cierra tocando fuera y con Escape. Sin eso, en el móvil un menú
+abierto por error solo se quita eligiendo algo.
 
 ## Guardar el entreno
 

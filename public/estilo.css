@@ -74,6 +74,60 @@ button, input, select, textarea { font: inherit; }
 
 .avatar { border-radius: 50%; display: block; background: var(--superficie); }
 
+/* ------------------------------------------------------- menú de la foto */
+
+.menu-usuario { position: relative; }
+
+.avatar-boton {
+  background: none;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  /* line-height 0: si no, la caja del botón queda más alta que la foto y la
+     barra crece unos píxeles sin motivo. */
+  line-height: 0;
+}
+.avatar-boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.avatar-boton[aria-expanded=true] .avatar { box-shadow: 0 0 0 2px var(--acento); }
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + .55rem);
+  min-width: 12rem;
+  display: grid;
+  gap: .1rem;
+  padding: .35rem;
+  background: var(--superficie-alta);
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgb(0 0 0 / .45);
+  z-index: 20;
+}
+
+.menu-opcion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  padding: .65rem .7rem;
+  color: var(--tinta);
+  font: inherit;
+  font-size: .95rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.menu-opcion:hover, .menu-opcion:focus-visible { background: var(--superficie); }
+.menu-opcion.activa { color: var(--acento); }
+
+.menu-linea { border: 0; border-top: 1px solid var(--linea); margin: .3rem .2rem; }
+
+/* En pantalla ancha las secciones son pestañas; aquí sobran. */
+.menu-vistas { display: none; }
+
 /* ---------------------------------------------------------------- general */
 
 main { max-width: var(--ancho); margin: 0 auto; padding: 1rem clamp(.8rem, 3vw, 1.5rem) 5rem; }
@@ -391,9 +445,12 @@ input[type=checkbox] {
 /* --------------------------------------------------------------- tamaños */
 
 @media (max-width: 34rem) {
-  .barra { flex-wrap: wrap; }
-  .pestanas { order: 3; width: 100%; margin-left: 0; }
-  .pestana { flex: 1; }
+  /* Las secciones se mudan al menú de la foto. Antes las pestañas se iban a
+     una segunda línea a todo lo ancho, y esa fila se come alto de barra
+     pegajosa justo donde menos sobra. */
+  .pestanas { display: none; }
+  .menu-vistas { display: block; }
+  .menu-usuario { margin-left: auto; }
   .cabecera-dia { grid-template-columns: 1fr; }
   .serie { grid-template-columns: 1.4rem 1fr 3.8rem 24px; gap: .4rem; }
 }

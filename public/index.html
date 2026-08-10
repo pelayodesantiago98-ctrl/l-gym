@@ -17,7 +17,24 @@
     <button type=button class=pestana role=tab data-vista=rutinas>Rutinas</button>
     <button type=button class=pestana role=tab data-vista=progreso>Progreso</button>
   </nav>
-  <img class=avatar src='https://lepayimio.es/perfil/foto' alt='' width=32 height=32>
+  <div class=menu-usuario>
+    <button type=button class=avatar-boton id=boton-menu
+            aria-haspopup=menu aria-expanded=false aria-controls=menu-usuario
+            aria-label='Abrir el menú'>
+      <img class=avatar src='https://lepayimio.es/perfil/foto' alt='' width=32 height=32>
+    </button>
+    <div class=menu id=menu-usuario role=menu hidden>
+      <!-- Las secciones solo se ven aquí en móvil: en pantalla ancha siguen
+           siendo pestañas y repetirlas sería ruido. -->
+      <div class=menu-vistas>
+        <button type=button class=menu-opcion role=menuitem data-vista=hoy>Entreno</button>
+        <button type=button class=menu-opcion role=menuitem data-vista=rutinas>Rutinas</button>
+        <button type=button class=menu-opcion role=menuitem data-vista=progreso>Progreso</button>
+        <hr class=menu-linea>
+      </div>
+      <a class=menu-opcion role=menuitem href='https://lepayimio.es/'>Volver al portal</a>
+    </div>
+  </div>
 </header>
 
 <main id=principal>

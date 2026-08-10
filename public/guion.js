@@ -69,6 +69,13 @@ function mostrar(vista, tocarUrl = true) {
     b.classList.toggle('activa', b.dataset.vista === vista);
     b.setAttribute('aria-selected', b.dataset.vista === vista ? 'true' : 'false');
   });
+  document.querySelectorAll('.menu-opcion[data-vista]').forEach((b) => {
+    b.classList.toggle('activa', b.dataset.vista === vista);
+    // aria-current y no aria-selected: esto es un menú, no una lista de
+    // pestañas, y aria-selected ahí no significa nada.
+    if (b.dataset.vista === vista) b.setAttribute('aria-current', 'true');
+    else b.removeAttribute('aria-current');
+  });
   if (vista === 'progreso') cargarStats();
   if (vista === 'rutinas') pintarEditor();
 }
@@ -759,6 +766,35 @@ async function recargarRutina() {
 
 document.querySelectorAll('.pestana').forEach((b) => {
   b.addEventListener('click', () => mostrar(b.dataset.vista));
+});
+
+// ------------------------------------------------------- menú de la foto
+
+const menuUsuario = $('#menu-usuario');
+const botonMenu = $('#boton-menu');
+
+function verMenu(abierto) {
+  menuUsuario.hidden = !abierto;
+  botonMenu.setAttribute('aria-expanded', String(abierto));
+}
+
+botonMenu.addEventListener('click', (ev) => {
+  // Sin esto el clic sigue subiendo hasta document y lo cierra al instante.
+  ev.stopPropagation();
+  verMenu(menuUsuario.hidden);
+});
+
+// Tocar fuera y Escape lo cierran: en el móvil, sin esto, un menú abierto por
+// error solo se quita eligiendo algo.
+document.addEventListener('click', (ev) => {
+  if (!menuUsuario.hidden && !menuUsuario.contains(ev.target)) verMenu(false);
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && !menuUsuario.hidden) { verMenu(false); botonMenu.focus(); }
+});
+
+menuUsuario.querySelectorAll('[data-vista]').forEach((b) => {
+  b.addEventListener('click', () => { mostrar(b.dataset.vista); verMenu(false); });
 });
 
 window.addEventListener('popstate', () => mostrar(location.hash.slice(1) || 'hoy', false));
