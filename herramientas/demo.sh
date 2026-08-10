@@ -90,8 +90,8 @@ echo 'datos de ejemplo cargados'
 
 # --- capturas ---
 C="--headless --disable-gpu --no-sandbox --hide-scrollbars --virtual-time-budget=8000 --run-all-compositor-stages-before-draw"
-chromium $C --window-size=1100,1500 --screenshot=/var/tmp/g-entreno.png  "$B/"           2>/dev/null
-chromium $C --window-size=420,1750  --screenshot=/var/tmp/g-movil.png    "$B/"           2>/dev/null
+chromium $C --window-size=1100,2300 --screenshot=/var/tmp/g-entreno.png  "$B/"           2>/dev/null
+chromium $C --window-size=420,2700  --screenshot=/var/tmp/g-movil.png    "$B/"           2>/dev/null
 chromium $C --window-size=1100,1700 --screenshot=/var/tmp/g-progreso.png "$B/#progreso"  2>/dev/null
 chromium $C --window-size=1100,1400 --screenshot=/var/tmp/g-rutinas.png  "$B/#rutinas"   2>/dev/null
 

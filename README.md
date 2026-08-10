@@ -39,12 +39,34 @@ semana pasada, y el progreso mentiría.
 `ultimaVezDe()` solo mira series con `hecho = 1` y de fechas **anteriores** a
 la de hoy, así que abrir el mismo día dos veces no se sugiere a sí mismo.
 
+## Guardar el entreno
+
+Todo se guarda solo mientras entrenas —cada casilla, cada peso—, así que el
+botón del final no está para que no se pierda nada. Hace dos cosas concretas:
+
+1. **Vacía lo que quede pendiente.** Los campos de peso salen con 600 ms de
+   retraso y las notas con 800. Si cierras el móvil justo después de teclear,
+   esa última cifra todavía no había salido.
+2. **Cierra la sesión**, guardando la hora. Así un día terminado no se
+   confunde con uno que se abrió y se abandonó a medias.
+
+Encima del botón va el resumen del día: series hechas y volumen. Sale de lo
+que ya está en pantalla, sin pedirle nada al servidor.
+
+Se puede **reabrir**: cierras el entreno y a los dos minutos te acuerdas de una
+serie que faltaba. `POST /api/sesion/:id/terminar` con `{"abierto": true}`.
+
+En el cliente, el orden importa: primero se vacían los pendientes y solo
+después se marca como terminado. Al revés, el último peso tecleado llegaría a
+una sesión ya cerrada.
+
 ## Datos
 
 ```
 grupos      un grupo muscular, por dueño
 ejercicios  del grupo; tipo = calentamiento | ejercicio; con foto opcional
-sesiones    un día + un grupo (única por dueño, fecha y grupo)
+sesiones    un día + un grupo (única por dueño, fecha y grupo);
+            `terminada` guarda cuándo se cerró, o null si sigue abierta
 marcas      hecho/no hecho de los calentamientos
 series      peso y repeticiones de cada serie de cada ejercicio
 ```

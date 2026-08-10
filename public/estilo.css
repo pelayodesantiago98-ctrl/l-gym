@@ -150,6 +150,20 @@ input[type=checkbox] {
 .boton-peligro { color: var(--peligro); }
 .boton-peligro:hover { border-color: var(--peligro); }
 
+.cierre { display: grid; gap: .6rem; justify-items: center; text-align: center; }
+.cierre .resumen { margin: 0; color: var(--tinta-2); font-size: .9rem; }
+.cierre .aviso { min-height: 1.2em; }
+.boton-grande { padding: .8rem 2.2rem; font-size: 1rem; font-weight: 600; }
+/* Cerrado: el boton pasa a ser el discreto de reabrir, no el principal. */
+.cierre.guardado .boton-grande {
+  background: transparent;
+  border-color: var(--linea);
+  font-weight: 400;
+  padding: .55rem .85rem;
+  font-size: .88rem;
+}
+.cierre.guardado .resumen { color: var(--tinta-1); font-weight: 600; }
+
 .fila-anadir {
   display: flex;
   flex-wrap: wrap;

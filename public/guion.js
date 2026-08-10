@@ -91,6 +91,17 @@ async function cargarSesion() {
   }
 }
 
+/*
+ * Guardados con retraso que todavia no han salido. El boton de terminar los
+ * vacia antes de cerrar: los campos de peso esperan 600 ms y las notas 800, y
+ * si se cierra el movil justo despues de teclear esa ultima cifra se perderia.
+ */
+const pendientes = new Set();
+
+async function vaciarPendientes() {
+  await Promise.all([...pendientes].map((f) => f()));
+}
+
 const marcaDe = (id) => (estado.sesion.marcas.find((m) => m.ejercicio_id === id) || {}).hecho === 1;
 const seriesDe = (id) => estado.sesion.series.filter((s) => s.ejercicio_id === id);
 
@@ -105,7 +116,37 @@ function pintarEntreno() {
     'Este grupo no tiene calentamiento. Añádelo en Rutinas.');
   pintarLista($('#lista-ejercicios'), ejerc, true,
     'Este grupo no tiene ejercicios. Añádelos en Rutinas.');
+
+  pintarCierre();
 }
+
+/*
+ * El pie de la sesion: cuanto llevas hecho y el boton de cerrarla.
+ *
+ * El resumen sale de lo que ya hay en pantalla, no se le pide al servidor: son
+ * dos sumas sobre datos que estan cargados.
+ */
+function pintarCierre() {
+  const { sesion, series } = estado.sesion;
+  const hechas = series.filter((s) => s.hecho === 1);
+  const volumen = hechas.reduce((a, s) => a + (s.peso || 0) * (s.repeticiones || 0), 0);
+  const cerrada = Boolean(sesion.terminada);
+
+  const bloque = $('#bloque-cierre');
+  bloque.classList.toggle('guardado', cerrada);
+  $('#aviso-cierre').textContent = '';
+
+  $('#resumen-cierre').textContent = cerrada
+    ? `Entreno guardado a las ${hora(sesion.terminada)}`
+    : (hechas.length
+      ? `${hechas.length} ${hechas.length === 1 ? 'serie hecha' : 'series hechas'} · ${kg(volumen)} kg de volumen`
+      : 'Todavía no has marcado ninguna serie.');
+
+  $('#guardar-entreno').textContent = cerrada ? 'Reabrir entreno' : 'Guardar entreno';
+}
+
+const hora = (iso) => new Date(iso).toLocaleTimeString('es-ES',
+  { hour: '2-digit', minute: '2-digit' });
 
 function pintarLista(ul, lista, conSeries, vacio) {
   ul.replaceChildren();
@@ -236,16 +277,22 @@ function filaSerie(e, numero, datos, sugerida) {
   hecha.checked = datos.hecho === 1;
   hecha.setAttribute('aria-label', `Serie ${numero} de ${e.nombre} hecha`);
 
-  const guardar = () => pedir(`/api/sesion/${estado.sesion.sesion.id}/serie`, {
-    cuerpo: {
-      ejercicio_id: e.id, numero,
-      peso: peso.value, repeticiones: reps.value, hecho: hecha.checked ? 1 : 0,
-    },
-  }).catch(() => {});
+  const guardar = () => {
+    // Fuera de la lista antes de enviar: si el boton de terminar llega a la
+    // vez, que no lo mande dos veces.
+    pendientes.delete(guardar);
+    return pedir(`/api/sesion/${estado.sesion.sesion.id}/serie`, {
+      cuerpo: {
+        ejercicio_id: e.id, numero,
+        peso: peso.value, repeticiones: reps.value, hecho: hecha.checked ? 1 : 0,
+      },
+    }).catch(() => {});
+  };
 
   const guardarLuego = conRetraso(guardar, 600);
-  peso.addEventListener('input', () => { confirmar(); guardarLuego(); });
-  reps.addEventListener('input', () => { confirmar(); guardarLuego(); });
+  const tecleado = () => { confirmar(); pendientes.add(guardar); guardarLuego(); };
+  peso.addEventListener('input', tecleado);
+  reps.addEventListener('input', tecleado);
   hecha.addEventListener('change', () => {
     confirmar();
     guardar();
@@ -720,10 +767,40 @@ $('#fecha').addEventListener('change', cargarSesion);
 $('#grupo').addEventListener('change', cargarSesion);
 $('#ejercicio-grafica').addEventListener('change', pintarProgreso);
 
-$('#notas').addEventListener('input', conRetraso(function () {
-  pedir(`/api/sesion/${estado.sesion.sesion.id}/notas`,
+const guardarNotas = () => {
+  pendientes.delete(guardarNotas);
+  return pedir(`/api/sesion/${estado.sesion.sesion.id}/notas`,
     { cuerpo: { notas: $('#notas').value } }).catch(() => {});
-}, 800));
+};
+const guardarNotasLuego = conRetraso(guardarNotas, 800);
+$('#notas').addEventListener('input', () => {
+  pendientes.add(guardarNotas);
+  guardarNotasLuego();
+});
+
+/*
+ * Cerrar el entreno. Primero se vacia lo que quedara pendiente y solo despues
+ * se marca como terminado: al reves, el ultimo peso tecleado llegaria a una
+ * sesion ya cerrada.
+ */
+$('#guardar-entreno').addEventListener('click', async () => {
+  const boton = $('#guardar-entreno');
+  // Si ya estaba cerrado, este clic lo reabre.
+  const reabrir = Boolean(estado.sesion.sesion.terminada);
+  boton.disabled = true;
+  $('#aviso-cierre').textContent = reabrir ? 'Reabriendo…' : 'Guardando…';
+  try {
+    if (!reabrir) await vaciarPendientes();
+    await pedir(`/api/sesion/${estado.sesion.sesion.id}/terminar`,
+      { cuerpo: { abierto: reabrir } });
+    await cargarSesion();
+    $('#aviso-cierre').textContent = reabrir ? '' : 'Guardado.';
+  } catch (e) {
+    $('#aviso-cierre').textContent = 'No he podido guardarlo. Vuelve a intentarlo.';
+  } finally {
+    boton.disabled = false;
+  }
+});
 
 $('#form-grupo').addEventListener('submit', async (ev) => {
   ev.preventDefault();

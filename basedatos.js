@@ -74,6 +74,15 @@ CREATE INDEX IF NOT EXISTS idx_sesiones_fecha   ON sesiones (dueno, fecha);
 CREATE INDEX IF NOT EXISTS idx_series_ejercicio ON series (ejercicio_id);
 `);
 
+/*
+ * Añadidos posteriores al esquema original. Se comprueba la columna en vez de
+ * intentar el ALTER y tragarse el error: así el arranque no depende de que el
+ * mensaje de error de SQLite siga diciendo lo mismo en versiones futuras.
+ */
+if (!db.prepare('PRAGMA table_info(sesiones)').all().some((c) => c.name === 'terminada')) {
+  db.exec('ALTER TABLE sesiones ADD COLUMN terminada TEXT');
+}
+
 const ahora = () => new Date().toISOString();
 
 // ------------------------------------------------------------------ grupos
@@ -194,6 +203,14 @@ const quitarSerie = (sesionId, ejercicioId, numero) => db.prepare(
   'DELETE FROM series WHERE sesion_id = ? AND ejercicio_id = ? AND numero = ?'
 ).run(sesionId, ejercicioId, numero).changes;
 
+/*
+ * Cerrar o reabrir el entreno del día. Guarda CUÁNDO se cerró, no un simple
+ * sí/no: si algún día interesa saber a qué hora se entrena, el dato ya está.
+ * null = abierto.
+ */
+const terminar = (sesionId, cuando) =>
+  db.prepare('UPDATE sesiones SET terminada = ? WHERE id = ?').run(cuando, sesionId);
+
 const guardarNotas = (sesionId, notas) =>
   db.prepare('UPDATE sesiones SET notas = ? WHERE id = ?').run(notas, sesionId).changes;
 
@@ -287,7 +304,7 @@ module.exports = {
   listarGrupos, crearGrupo, grupo, renombrarGrupo, borrarGrupo,
   listarEjercicios, ejercicio, crearEjercicio, editarEjercicio,
   ponerImagen, borrarEjercicio, moverEjercicio,
-  sesionDe, marcasDe, seriesDe, marcar, guardarSerie, quitarSerie, guardarNotas, ultimaVezDe,
+  sesionDe, marcasDe, seriesDe, marcar, guardarSerie, quitarSerie, guardarNotas, terminar, ultimaVezDe,
   historial, progresoDe, resumen, records,
 };
 

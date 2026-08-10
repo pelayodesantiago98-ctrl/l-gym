@@ -250,6 +250,19 @@ app.post('/api/sesion/:id/notas', (req, res) => {
   res.json({ ok: true });
 });
 
+/*
+ * Cerrar el entreno del día, o reabrirlo si se envía { abierto: true }.
+ * Reabrir tiene que ser posible: se cierra y a los dos minutos te acuerdas de
+ * una serie que faltaba.
+ */
+app.post('/api/sesion/:id/terminar', (req, res) => {
+  const s = miSesion(req);
+  if (!s) return res.status(404).json({ error: 'no-existe' });
+  const cuando = req.body.abierto ? null : new Date().toISOString();
+  bd.terminar(s.id, cuando);
+  res.json({ terminada: cuando });
+});
+
 // ---------------------------------------------------------------- progreso
 
 app.get('/api/progreso/:id', (req, res) => {
