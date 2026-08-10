@@ -1,0 +1,18 @@
+# Dependencias: se reinstalan con npm ci y pesan mas que todo lo demas junto.
+node_modules/
+
+# Rutinas y pesos de gente real. Nunca al repositorio.
+datos/
+
+# Fotos que sube quien usa la app: son suyas, no del proyecto.
+public/imagenes/
+
+# Secretos, por si alguna vez se deja una copia aqui.
+.env
+*.env
+
+# Copias que se van dejando al tocar ficheros a mano.
+*.bak
+*.bak[0-9]
+*.pre-*
+

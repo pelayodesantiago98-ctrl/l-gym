@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang=es>
+<head>
+<meta charset=utf-8>
+<meta name=viewport content='width=device-width, initial-scale=1'>
+<meta name=robots content=noindex>
+<meta name=theme-color content='#0f1216'>
+<title>L-gym</title>
+<link rel=stylesheet href=/estilo.css>
+</head>
+<body>
+
+<header class=barra>
+  <span class=marca>L-gym</span>
+  <nav class=pestanas role=tablist>
+    <button type=button class='pestana activa' role=tab data-vista=hoy>Entreno</button>
+    <button type=button class=pestana role=tab data-vista=rutinas>Rutinas</button>
+    <button type=button class=pestana role=tab data-vista=progreso>Progreso</button>
+  </nav>
+  <img class=avatar src='https://lepayimio.es/perfil/foto' alt='' width=32 height=32>
+</header>
+
+<main id=principal>
+
+  <!-- ------------------------------------------------------------ ENTRENO -->
+  <section class=vista id=vista-hoy>
+    <div class=cabecera-dia>
+      <p class=campo-linea>
+        <label for=fecha>Día</label>
+        <input type=date id=fecha>
+      </p>
+      <p class=campo-linea>
+        <label for=grupo>Grupo muscular</label>
+        <select id=grupo></select>
+      </p>
+    </div>
+
+    <p class=aviso id=aviso-hoy role=status></p>
+
+    <div id=entreno hidden>
+      <section class=bloque>
+        <h2 class=titulo-bloque>Calentamiento</h2>
+        <ul class=lista id=lista-calentamiento></ul>
+      </section>
+
+      <section class=bloque>
+        <h2 class=titulo-bloque>Ejercicios</h2>
+        <ul class=lista id=lista-ejercicios></ul>
+      </section>
+
+      <section class=bloque>
+        <h2 class=titulo-bloque>Notas del día</h2>
+        <textarea id=notas rows=3 maxlength=1000 placeholder='Sensaciones, molestias, lo que quieras acordarte la próxima vez'></textarea>
+      </section>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ RUTINAS -->
+  <section class='vista oculta' id=vista-rutinas>
+    <form class=fila-anadir id=form-grupo>
+      <label class=oculto for=nuevo-grupo>Nuevo grupo muscular</label>
+      <input id=nuevo-grupo placeholder='Nuevo grupo: pecho, espalda, pierna…' maxlength=60 required>
+      <button type=submit class=boton>Añadir grupo</button>
+    </form>
+    <div id=editor></div>
+  </section>
+
+  <!-- ----------------------------------------------------------- PROGRESO -->
+  <section class='vista oculta' id=vista-progreso>
+    <div class=tarjetas id=tarjetas></div>
+
+    <section class=bloque>
+      <h2 class=titulo-bloque>Progreso de un ejercicio</h2>
+      <p class=campo-linea>
+        <label for=ejercicio-grafica>Ejercicio</label>
+        <select id=ejercicio-grafica></select>
+      </p>
+      <div id=graficas></div>
+    </section>
+
+    <section class=bloque>
+      <h2 class=titulo-bloque>Marcas personales</h2>
+      <div class=tabla-envoltura><table class=tabla id=tabla-records></table></div>
+    </section>
+
+    <section class=bloque>
+      <h2 class=titulo-bloque>Últimos entrenos</h2>
+      <div class=tabla-envoltura><table class=tabla id=tabla-historial></table></div>
+    </section>
+  </section>
+
+</main>
+
+<script src=/guion.js></script>
+</body>
+</html>
+

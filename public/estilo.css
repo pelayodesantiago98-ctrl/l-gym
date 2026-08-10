@@ -1,0 +1,390 @@
+/* l-gym. Pensado para el móvil y para usarse con una mano entre serie y serie:
+   objetivos táctiles grandes, poco texto y nada que obligue a apuntar fino. */
+
+:root {
+  --fondo: #0f1216;
+  --superficie: #171c23;
+  --superficie-alta: #1e252e;
+  --linea: #29323d;
+  --tinta: #e8edf2;
+  --tinta-2: #9fb0c0;
+  --tinta-3: #6d7d8c;
+  --acento: #58c8f5;
+  --acento-apagado: #1d4f66;
+  --bien: #5fd39a;
+  --peligro: #f08a7a;
+  --ancho: 62rem;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+h2, h3 { font-weight: 600; }
+
+button, input, select, textarea { font: inherit; }
+
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* ------------------------------------------------------------------ barra */
+
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .6rem clamp(.8rem, 3vw, 1.5rem);
+  background: var(--fondo);
+  border-bottom: 1px solid var(--linea);
+}
+
+.marca { font-weight: 700; letter-spacing: .02em; }
+
+.pestanas { display: flex; gap: .3rem; margin-left: auto; }
+
+.pestana {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--tinta-2);
+  padding: .5rem .7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .88rem;
+}
+.pestana:hover { color: var(--tinta); }
+.pestana.activa { background: var(--superficie-alta); border-color: var(--linea); color: var(--tinta); }
+
+.avatar { border-radius: 50%; display: block; background: var(--superficie); }
+
+/* ---------------------------------------------------------------- general */
+
+main { max-width: var(--ancho); margin: 0 auto; padding: 1rem clamp(.8rem, 3vw, 1.5rem) 5rem; }
+
+.vista { display: grid; gap: 1.5rem; }
+.vista.oculta { display: none; }
+
+.bloque {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.titulo-bloque {
+  margin: 0 0 .8rem;
+  font-size: .78rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+
+.nota { color: var(--tinta-3); font-size: .9rem; margin: .3rem 0; }
+.aviso { color: var(--tinta-2); font-size: .9rem; margin: 0; }
+
+.campo-linea { display: grid; gap: .3rem; margin: 0; }
+.campo-linea label, .fila-anadir label {
+  font-size: .72rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+
+input, select, textarea {
+  background: var(--superficie-alta);
+  color: var(--tinta);
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  padding: .6rem .7rem;
+  width: 100%;
+}
+textarea { resize: vertical; }
+
+/* El icono del calendario y el del desplegable se pintan en negro sobre fondo
+   oscuro y se vuelven invisibles. */
+input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .6; }
+
+/* 24 px de casilla: la de serie hay que marcarla con el pulgar y sudando. */
+input[type=checkbox] {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--acento);
+  padding: 0;
+  cursor: pointer;
+}
+
+.cabecera-dia { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+
+/* --------------------------------------------------------------- botones */
+
+.boton, .boton-lino, .boton-peligro {
+  cursor: pointer;
+  border-radius: 10px;
+  padding: .55rem .85rem;
+  font-size: .88rem;
+  border: 1px solid var(--linea);
+  background: var(--superficie-alta);
+  color: var(--tinta);
+  white-space: nowrap;
+}
+.boton { background: var(--acento-apagado); border-color: var(--acento-apagado); }
+.boton:hover { background: #26647f; }
+.boton-lino:hover { border-color: var(--tinta-3); }
+.boton-peligro { color: var(--peligro); }
+.boton-peligro:hover { border-color: var(--peligro); }
+
+.fila-anadir {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  margin-top: .8rem;
+}
+.fila-anadir input { flex: 1 1 12rem; width: auto; }
+.campo-series { flex: 0 0 5rem !important; }
+
+/* ------------------------------------------------------ lista de entreno */
+
+.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
+
+.mov {
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  padding: .7rem .8rem;
+  background: var(--superficie-alta);
+}
+.mov.hecho { border-color: var(--acento-apagado); }
+.mov.hecho .mov-nombre { color: var(--tinta-3); text-decoration: line-through; }
+
+.mov-cabecera { display: flex; align-items: center; gap: .7rem; }
+
+.mov-check {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.mov-nombre { font-weight: 600; }
+
+.mov-foto {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--linea);
+  cursor: zoom-in;
+  flex: none;
+}
+/* Ampliada ocupa el ancho de la tarjeta: en el gimnasio se mira la postura de
+   reojo y a 52 px no se distingue nada. */
+.mov-foto.grande {
+  width: 100%;
+  height: auto;
+  max-height: 60vh;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+
+.mov-notas { margin: .5rem 0 0; font-size: .88rem; color: var(--tinta-2); }
+
+/* --------------------------------------------------------------- series */
+
+.series { margin-top: .8rem; display: grid; gap: .35rem; }
+
+/* Anchos con tope: con 1fr el campo de peso se estiraba a media pantalla en
+   escritorio, y un número de tres cifras no necesita 600 px. */
+.serie {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(4.5rem, 8rem) 4.5rem 24px;
+  gap: .5rem;
+  align-items: center;
+  justify-content: start;
+}
+.serie input { padding: .5rem .55rem; }
+.serie-num { color: var(--tinta-3); font-variant-numeric: tabular-nums; font-size: .9rem; }
+
+.serie-cabecera {
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.serie-cabecera span:last-child { text-align: center; }
+
+.serie.hecha input[type=number] { border-color: var(--acento-apagado); color: var(--acento); }
+
+/* Propuesta a partir de la última vez: se ve, pero se ve que aún no cuenta.
+   En cuanto se toca el campo o se marca la serie, pasa a texto normal. */
+.serie.propuesta input[type=number] { color: var(--tinta-3); border-style: dashed; }
+
+.ultima-vez {
+  margin: .5rem 0 0;
+  font-size: .8rem;
+  color: var(--tinta-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- rutinas */
+
+.grupo {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.grupo-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.grupo-nombre { margin: 0; flex: 1; font-size: 1.15rem; }
+
+.sublista { margin-top: 1.2rem; }
+.sublista-titulo {
+  margin: 0 0 .6rem;
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+
+.fila-editor {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  flex-wrap: wrap;
+  padding: .6rem 0;
+  border-top: 1px solid var(--linea);
+}
+.fila-editor-datos { display: flex; flex-direction: column; flex: 1; min-width: 8rem; }
+.fila-nombre { font-weight: 600; }
+.fila-series, .fila-notas { font-size: .8rem; color: var(--tinta-3); }
+.fila-acciones { display: flex; gap: .3rem; flex-wrap: wrap; }
+.mini-foto {
+  width: 40px; height: 40px; object-fit: cover;
+  border-radius: 6px; border: 1px solid var(--linea);
+}
+
+/* -------------------------------------------------------------- progreso */
+
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: .8rem;
+}
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  padding: .9rem 1rem;
+  display: grid;
+  gap: .15rem;
+}
+.tarjeta-rotulo {
+  font-size: .68rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.tarjeta-valor { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.tarjeta-pie { font-size: .78rem; color: var(--tinta-3); }
+
+.tabla-envoltura { overflow-x: auto; }
+.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tabla th, .tabla td {
+  text-align: left;
+  padding: .5rem .6rem;
+  border-bottom: 1px solid var(--linea);
+  white-space: nowrap;
+}
+.tabla th {
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+  font-weight: 600;
+}
+.tabla td { font-variant-numeric: tabular-nums; }
+.tabla caption { text-align: left; }
+
+/* -------------------------------------------------------------- gráficas */
+
+.grafica { margin: 0 0 1.5rem; }
+.grafica-titulo {
+  font-size: .78rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+  margin-bottom: .4rem;
+}
+
+.grafica-lienzo { position: relative; }
+.lienzo { width: 100%; height: auto; display: block; touch-action: pan-y; }
+
+/* Rejilla y ejes recesivos: sitúan el dato sin competir con él. */
+.rejilla { stroke: var(--linea); stroke-width: 1; }
+.eje { fill: var(--tinta-3); font-size: 11px; }
+
+.linea { fill: none; stroke: var(--acento); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+/* Anillo del color del fondo: separa el punto de la línea cuando se solapan. */
+.punto { fill: var(--acento); stroke: var(--fondo); stroke-width: 2; }
+
+/* Los números van en color de texto, nunca en el de la serie: el color es
+   identidad del dato, no decoración de la cifra. */
+.etiqueta { fill: var(--tinta); font-size: 12px; font-weight: 600; }
+
+.cruceta { stroke: var(--tinta-3); stroke-width: 1; stroke-dasharray: 3 3; }
+
+.globo {
+  position: absolute;
+  top: .3rem;
+  transform: translateX(-50%);
+  background: var(--superficie-alta);
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  padding: .35rem .6rem;
+  font-size: .82rem;
+  display: grid;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.globo span { color: var(--tinta-3); font-size: .74rem; }
+/* display:grid gana a lo que hace el atributo hidden por defecto, así que sin
+   esto el globo se quedaba asomando en una esquina de cada gráfica. */
+.globo[hidden] { display: none; }
+
+.tabla-alterna { margin-top: .5rem; }
+.tabla-alterna summary { cursor: pointer; color: var(--tinta-2); font-size: .88rem; }
+
+/* --------------------------------------------------------------- tamaños */
+
+@media (max-width: 34rem) {
+  .barra { flex-wrap: wrap; }
+  .pestanas { order: 3; width: 100%; margin-left: 0; }
+  .pestana { flex: 1; }
+  .cabecera-dia { grid-template-columns: 1fr; }
+  .serie { grid-template-columns: 1.4rem 1fr 3.8rem 24px; gap: .4rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+

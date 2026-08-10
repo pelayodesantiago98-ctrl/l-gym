@@ -1,0 +1,293 @@
+'use strict';
+
+// Persistencia de l-gym. SQLite en fichero: una persona apuntando series en el
+// gimnasio no justifica nada más grande.
+
+const Database = require('better-sqlite3');
+const fs = require('fs');
+const path = require('path');
+
+const DIR = process.env.DIR_DATOS || path.join(__dirname, 'datos');
+fs.mkdirSync(DIR, { recursive: true });
+
+const db = new Database(path.join(DIR, 'gym.db'));
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS grupos (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  dueno  TEXT NOT NULL,
+  nombre TEXT NOT NULL,
+  orden  INTEGER NOT NULL DEFAULT 0,
+  creado TEXT NOT NULL
+);
+
+-- Calentamientos y ejercicios viven en la misma tabla y se separan por 'tipo'.
+-- Son la misma cosa -- un movimiento con nombre, foto y sitio en la lista -- y
+-- partirlos en dos tablas obligaria a duplicar cada consulta.
+CREATE TABLE IF NOT EXISTS ejercicios (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  grupo_id INTEGER NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+  tipo     TEXT NOT NULL CHECK (tipo IN ('calentamiento', 'ejercicio')),
+  nombre   TEXT NOT NULL,
+  notas    TEXT NOT NULL DEFAULT '',
+  series   INTEGER NOT NULL DEFAULT 3,
+  imagen   TEXT,
+  orden    INTEGER NOT NULL DEFAULT 0,
+  creado   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sesiones (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  dueno    TEXT NOT NULL,
+  fecha    TEXT NOT NULL,
+  grupo_id INTEGER NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+  notas    TEXT NOT NULL DEFAULT '',
+  creada   TEXT NOT NULL,
+  UNIQUE (dueno, fecha, grupo_id)
+);
+
+-- El visto de cada movimiento en una sesion. Vale para calentamientos y para
+-- ejercicios; los calentamientos no tienen nada mas.
+CREATE TABLE IF NOT EXISTS marcas (
+  sesion_id    INTEGER NOT NULL REFERENCES sesiones(id) ON DELETE CASCADE,
+  ejercicio_id INTEGER NOT NULL REFERENCES ejercicios(id) ON DELETE CASCADE,
+  hecho        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (sesion_id, ejercicio_id)
+);
+
+-- Una fila por serie levantada. Es la tabla de la que sale todo el progreso,
+-- asi que guarda el peso aunque la serie no se haya marcado como hecha.
+CREATE TABLE IF NOT EXISTS series (
+  sesion_id    INTEGER NOT NULL REFERENCES sesiones(id) ON DELETE CASCADE,
+  ejercicio_id INTEGER NOT NULL REFERENCES ejercicios(id) ON DELETE CASCADE,
+  numero       INTEGER NOT NULL,
+  peso         REAL,
+  repeticiones INTEGER,
+  hecho        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (sesion_id, ejercicio_id, numero)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ejercicios_grupo ON ejercicios (grupo_id, tipo, orden);
+CREATE INDEX IF NOT EXISTS idx_sesiones_fecha   ON sesiones (dueno, fecha);
+CREATE INDEX IF NOT EXISTS idx_series_ejercicio ON series (ejercicio_id);
+`);
+
+const ahora = () => new Date().toISOString();
+
+// ------------------------------------------------------------------ grupos
+
+const listarGrupos = (dueno) => db.prepare(
+  'SELECT * FROM grupos WHERE dueno = ? ORDER BY orden, nombre'
+).all(dueno);
+
+function crearGrupo(dueno, nombre) {
+  const orden = db.prepare(
+    'SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM grupos WHERE dueno = ?'
+  ).get(dueno).n;
+  const r = db.prepare(
+    'INSERT INTO grupos (dueno, nombre, orden, creado) VALUES (?, ?, ?, ?)'
+  ).run(dueno, nombre, orden, ahora());
+  return grupo(dueno, r.lastInsertRowid);
+}
+
+const grupo = (dueno, id) => db.prepare(
+  'SELECT * FROM grupos WHERE id = ? AND dueno = ?'
+).get(id, dueno);
+
+const renombrarGrupo = (dueno, id, nombre) => db.prepare(
+  'UPDATE grupos SET nombre = ? WHERE id = ? AND dueno = ?'
+).run(nombre, id, dueno).changes;
+
+const borrarGrupo = (dueno, id) => db.prepare(
+  'DELETE FROM grupos WHERE id = ? AND dueno = ?'
+).run(id, dueno).changes;
+
+// -------------------------------------------------------------- ejercicios
+
+const listarEjercicios = (grupoId) => db.prepare(
+  'SELECT * FROM ejercicios WHERE grupo_id = ? ORDER BY tipo DESC, orden, id'
+).all(grupoId);
+
+const ejercicio = (id) => db.prepare('SELECT * FROM ejercicios WHERE id = ?').get(id);
+
+function crearEjercicio(d) {
+  const orden = db.prepare(
+    'SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM ejercicios WHERE grupo_id = ? AND tipo = ?'
+  ).get(d.grupo_id, d.tipo).n;
+  const r = db.prepare(`
+    INSERT INTO ejercicios (grupo_id, tipo, nombre, notas, series, orden, creado)
+    VALUES (@grupo_id, @tipo, @nombre, @notas, @series, @orden, @creado)
+  `).run({ ...d, orden, creado: ahora() });
+  return ejercicio(r.lastInsertRowid);
+}
+
+function editarEjercicio(id, d) {
+  db.prepare(`
+    UPDATE ejercicios SET nombre = @nombre, notas = @notas, series = @series
+    WHERE id = @id
+  `).run({ ...d, id });
+  return ejercicio(id);
+}
+
+const ponerImagen = (id, nombre) =>
+  db.prepare('UPDATE ejercicios SET imagen = ? WHERE id = ?').run(nombre, id).changes;
+
+const borrarEjercicio = (id) =>
+  db.prepare('DELETE FROM ejercicios WHERE id = ?').run(id).changes;
+
+function moverEjercicio(id, direccion) {
+  const e = ejercicio(id);
+  if (!e) return false;
+  const vecino = db.prepare(`
+    SELECT * FROM ejercicios
+    WHERE grupo_id = ? AND tipo = ? AND orden ${direccion < 0 ? '<' : '>'} ?
+    ORDER BY orden ${direccion < 0 ? 'DESC' : 'ASC'} LIMIT 1
+  `).get(e.grupo_id, e.tipo, e.orden);
+  if (!vecino) return false;
+  const cambio = db.transaction(() => {
+    db.prepare('UPDATE ejercicios SET orden = ? WHERE id = ?').run(vecino.orden, e.id);
+    db.prepare('UPDATE ejercicios SET orden = ? WHERE id = ?').run(e.orden, vecino.id);
+  });
+  cambio();
+  return true;
+}
+
+// ---------------------------------------------------------------- sesiones
+
+// La sesion se crea sola la primera vez que se abre un grupo en una fecha: en
+// el gimnasio nadie quiere pulsar "empezar entrenamiento" antes de apuntar.
+function sesionDe(dueno, fecha, grupoId) {
+  let s = db.prepare(
+    'SELECT * FROM sesiones WHERE dueno = ? AND fecha = ? AND grupo_id = ?'
+  ).get(dueno, fecha, grupoId);
+  if (!s) {
+    const r = db.prepare(
+      'INSERT INTO sesiones (dueno, fecha, grupo_id, creada) VALUES (?, ?, ?, ?)'
+    ).run(dueno, fecha, grupoId, ahora());
+    s = db.prepare('SELECT * FROM sesiones WHERE id = ?').get(r.lastInsertRowid);
+  }
+  return s;
+}
+
+const marcasDe = (sesionId) =>
+  db.prepare('SELECT ejercicio_id, hecho FROM marcas WHERE sesion_id = ?').all(sesionId);
+
+const seriesDe = (sesionId) => db.prepare(
+  'SELECT ejercicio_id, numero, peso, repeticiones, hecho FROM series WHERE sesion_id = ? ORDER BY numero'
+).all(sesionId);
+
+const marcar = (sesionId, ejercicioId, hecho) => db.prepare(`
+  INSERT INTO marcas (sesion_id, ejercicio_id, hecho) VALUES (?, ?, ?)
+  ON CONFLICT (sesion_id, ejercicio_id) DO UPDATE SET hecho = excluded.hecho
+`).run(sesionId, ejercicioId, hecho ? 1 : 0);
+
+const guardarSerie = (s) => db.prepare(`
+  INSERT INTO series (sesion_id, ejercicio_id, numero, peso, repeticiones, hecho)
+  VALUES (@sesion_id, @ejercicio_id, @numero, @peso, @repeticiones, @hecho)
+  ON CONFLICT (sesion_id, ejercicio_id, numero) DO UPDATE SET
+    peso = excluded.peso, repeticiones = excluded.repeticiones, hecho = excluded.hecho
+`).run(s);
+
+const quitarSerie = (sesionId, ejercicioId, numero) => db.prepare(
+  'DELETE FROM series WHERE sesion_id = ? AND ejercicio_id = ? AND numero = ?'
+).run(sesionId, ejercicioId, numero).changes;
+
+const guardarNotas = (sesionId, notas) =>
+  db.prepare('UPDATE sesiones SET notas = ? WHERE id = ?').run(notas, sesionId).changes;
+
+// La sesion vacia no cuenta como entrenamiento: solo las que tienen algo hecho.
+const historial = (dueno, limite) => db.prepare(`
+  SELECT s.id, s.fecha, s.grupo_id, g.nombre AS grupo,
+         (SELECT COUNT(*) FROM series x WHERE x.sesion_id = s.id AND x.hecho = 1) AS series_hechas,
+         (SELECT COALESCE(SUM(x.peso * COALESCE(x.repeticiones, 1)), 0)
+            FROM series x WHERE x.sesion_id = s.id AND x.hecho = 1 AND x.peso IS NOT NULL) AS volumen
+  FROM sesiones s JOIN grupos g ON g.id = s.grupo_id
+  WHERE s.dueno = ?
+  ORDER BY s.fecha DESC LIMIT ?
+`).all(dueno, limite);
+
+/*
+ * Lo que se levantó la última vez en este ejercicio, para proponerlo de
+ * partida. Se busca el día anterior más reciente con series marcadas: las
+ * apuntadas y no hechas no valen como referencia, porque a lo mejor se dejaron
+ * a medias justamente por no poder con ese peso.
+ *
+ * "Anterior" es estrictamente antes de la fecha que se está mirando, no antes
+ * de hoy: si se rellena un entreno de la semana pasada, la referencia buena es
+ * la de la semana anterior a esa, no la de ayer.
+ */
+function ultimaVezDe(dueno, ejercicioId, antesDe) {
+  const dia = db.prepare(`
+    SELECT s.fecha FROM sesiones s JOIN series x ON x.sesion_id = s.id
+    WHERE s.dueno = ? AND x.ejercicio_id = ? AND x.hecho = 1 AND s.fecha < ?
+    ORDER BY s.fecha DESC LIMIT 1
+  `).get(dueno, ejercicioId, antesDe);
+  if (!dia) return null;
+
+  return {
+    fecha: dia.fecha,
+    series: db.prepare(`
+      SELECT x.numero, x.peso, x.repeticiones
+      FROM series x JOIN sesiones s ON s.id = x.sesion_id
+      WHERE s.dueno = ? AND x.ejercicio_id = ? AND s.fecha = ? AND x.hecho = 1
+      ORDER BY x.numero
+    `).all(dueno, ejercicioId, dia.fecha),
+  };
+}
+
+// ---------------------------------------------------------------- progreso
+
+// Una fila por sesion y ejercicio: el peso mas alto de ese dia y el volumen
+// total. Son dos medidas de escala distinta, asi que en la web van en dos
+// graficas separadas y nunca en dos ejes de la misma.
+const progresoDe = (dueno, ejercicioId) => db.prepare(`
+  SELECT s.fecha,
+         MAX(x.peso) AS peso_max,
+         SUM(x.peso * COALESCE(x.repeticiones, 1)) AS volumen,
+         COUNT(*) AS series
+  FROM series x
+  JOIN sesiones s ON s.id = x.sesion_id
+  WHERE s.dueno = ? AND x.ejercicio_id = ? AND x.peso IS NOT NULL AND x.hecho = 1
+  GROUP BY s.fecha
+  ORDER BY s.fecha
+`).all(dueno, ejercicioId);
+
+const resumen = (dueno) => db.prepare(`
+  SELECT
+    (SELECT COUNT(*) FROM sesiones s WHERE s.dueno = ?
+       AND EXISTS (SELECT 1 FROM series x WHERE x.sesion_id = s.id AND x.hecho = 1)) AS entrenos,
+    (SELECT COUNT(*) FROM sesiones s JOIN series x ON x.sesion_id = s.id
+       WHERE s.dueno = ? AND x.hecho = 1) AS series_totales,
+    (SELECT COALESCE(SUM(x.peso * COALESCE(x.repeticiones, 1)), 0)
+       FROM sesiones s JOIN series x ON x.sesion_id = s.id
+       WHERE s.dueno = ? AND x.hecho = 1 AND x.peso IS NOT NULL) AS volumen_total,
+    (SELECT MAX(s.fecha) FROM sesiones s WHERE s.dueno = ?
+       AND EXISTS (SELECT 1 FROM series x WHERE x.sesion_id = s.id AND x.hecho = 1)) AS ultimo
+`).get(dueno, dueno, dueno, dueno);
+
+// Marcas personales: el peso mas alto de cada ejercicio y cuando se hizo.
+const records = (dueno) => db.prepare(`
+  SELECT e.id, e.nombre, g.nombre AS grupo, MAX(x.peso) AS peso,
+         (SELECT s2.fecha FROM series x2 JOIN sesiones s2 ON s2.id = x2.sesion_id
+          WHERE x2.ejercicio_id = e.id AND s2.dueno = ? AND x2.hecho = 1
+          ORDER BY x2.peso DESC, s2.fecha DESC LIMIT 1) AS fecha
+  FROM series x
+  JOIN sesiones s ON s.id = x.sesion_id
+  JOIN ejercicios e ON e.id = x.ejercicio_id
+  JOIN grupos g ON g.id = e.grupo_id
+  WHERE s.dueno = ? AND x.hecho = 1 AND x.peso IS NOT NULL AND e.tipo = 'ejercicio'
+  GROUP BY e.id
+  ORDER BY g.nombre, e.nombre
+`).all(dueno, dueno);
+
+module.exports = {
+  db,
+  listarGrupos, crearGrupo, grupo, renombrarGrupo, borrarGrupo,
+  listarEjercicios, ejercicio, crearEjercicio, editarEjercicio,
+  ponerImagen, borrarEjercicio, moverEjercicio,
+  sesionDe, marcasDe, seriesDe, marcar, guardarSerie, quitarSerie, guardarNotas, ultimaVezDe,
+  historial, progresoDe, resumen, records,
+};
+

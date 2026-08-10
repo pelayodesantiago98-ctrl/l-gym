@@ -1,0 +1,303 @@
+'use strict';
+
+// l-gym: rutinas de gimnasio y progreso.
+//
+// Entra por el mismo SSO que el resto del ecosistema, asi que aqui no hay
+// contrasenas ni usuarios propios: el portal dice quien eres y todo lo que se
+// guarda cuelga de ese id.
+
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
+
+const sso = require('/usr/local/lib/lepayimio/sso');
+const bd = require('./basedatos');
+
+const PUERTO = Number(process.env.PUERTO || 3007);
+const ZONA = process.env.ZONA_HORARIA || 'Europe/Madrid';
+const IMAGENES = path.join(__dirname, 'public', 'imagenes');
+fs.mkdirSync(IMAGENES, { recursive: true });
+
+const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', true);
+app.use(express.json({ limit: '64kb' }));
+
+// El dia de hoy segun el reloj de Madrid, no el del proceso.
+const hoy = () => new Intl.DateTimeFormat('en-CA', { timeZone: ZONA }).format(new Date());
+
+const esFecha = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const limpio = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+const entero = (v, min, max, porDefecto) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : porDefecto;
+};
+// El peso admite decimales (mancuernas de 2,5) y tambien vacio: una serie
+// apuntada sin peso todavia es una serie planeada.
+const decimal = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) && n >= 0 && n <= 1000 ? Math.round(n * 100) / 100 : null;
+};
+
+// ------------------------------------------------------------------ acceso
+
+app.use(sso.exigirSesion());
+const quien = (req) => req.sesion.id;
+
+// Todo detras del SSO, tambien los estaticos. Las fotos de los ejercicios son
+// del usuario, y servirlas desde nginx las dejaria abiertas a quien acertase
+// el nombre del fichero. Cuesta un salto por Node y se evita el problema.
+app.use(express.static(path.join(__dirname, 'public'), {
+  index: 'index.html',
+  maxAge: '5m',
+  setHeaders: (res, ruta) => {
+    if (ruta.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+  },
+}));
+
+// ------------------------------------------------------------------ rutina
+
+app.get('/api/rutina', (req, res) => {
+  const grupos = bd.listarGrupos(quien(req));
+  res.json({
+    hoy: hoy(),
+    usuario: req.sesion.nombre,
+    grupos: grupos.map((g) => ({ ...g, ejercicios: bd.listarEjercicios(g.id) })),
+  });
+});
+
+app.post('/api/grupos', (req, res) => {
+  const nombre = limpio(req.body.nombre, 60);
+  if (nombre.length < 2) return res.status(400).json({ error: 'nombre' });
+  res.json(bd.crearGrupo(quien(req), nombre));
+});
+
+app.patch('/api/grupos/:id', (req, res) => {
+  const nombre = limpio(req.body.nombre, 60);
+  if (nombre.length < 2) return res.status(400).json({ error: 'nombre' });
+  if (!bd.renombrarGrupo(quien(req), Number(req.params.id), nombre)) {
+    return res.status(404).json({ error: 'no-existe' });
+  }
+  res.json({ ok: true });
+});
+
+app.delete('/api/grupos/:id', (req, res) => {
+  if (!bd.borrarGrupo(quien(req), Number(req.params.id))) {
+    return res.status(404).json({ error: 'no-existe' });
+  }
+  res.json({ ok: true });
+});
+
+// Que el ejercicio pertenece a un grupo de quien pregunta. Sin esto, cambiando
+// un numero en la peticion se podria tocar la rutina de otro.
+function miEjercicio(req) {
+  const e = bd.ejercicio(Number(req.params.id));
+  if (!e) return null;
+  return bd.grupo(quien(req), e.grupo_id) ? e : null;
+}
+
+app.post('/api/ejercicios', (req, res) => {
+  const grupoId = Number(req.body.grupo_id);
+  if (!bd.grupo(quien(req), grupoId)) return res.status(404).json({ error: 'grupo' });
+
+  const tipo = req.body.tipo === 'calentamiento' ? 'calentamiento' : 'ejercicio';
+  const nombre = limpio(req.body.nombre, 80);
+  if (nombre.length < 2) return res.status(400).json({ error: 'nombre' });
+
+  res.json(bd.crearEjercicio({
+    grupo_id: grupoId,
+    tipo,
+    nombre,
+    notas: limpio(req.body.notas, 300),
+    series: tipo === 'calentamiento' ? 0 : entero(req.body.series, 1, 12, 3),
+  }));
+});
+
+app.patch('/api/ejercicios/:id', (req, res) => {
+  const e = miEjercicio(req);
+  if (!e) return res.status(404).json({ error: 'no-existe' });
+  const nombre = limpio(req.body.nombre, 80);
+  if (nombre.length < 2) return res.status(400).json({ error: 'nombre' });
+  res.json(bd.editarEjercicio(e.id, {
+    nombre,
+    notas: limpio(req.body.notas, 300),
+    series: e.tipo === 'calentamiento' ? 0 : entero(req.body.series, 1, 12, e.series),
+  }));
+});
+
+app.post('/api/ejercicios/:id/mover', (req, res) => {
+  const e = miEjercicio(req);
+  if (!e) return res.status(404).json({ error: 'no-existe' });
+  res.json({ ok: bd.moverEjercicio(e.id, Number(req.body.direccion) < 0 ? -1 : 1) });
+});
+
+app.delete('/api/ejercicios/:id', (req, res) => {
+  const e = miEjercicio(req);
+  if (!e) return res.status(404).json({ error: 'no-existe' });
+  if (e.imagen) { try { fs.unlinkSync(path.join(IMAGENES, e.imagen)); } catch {} }
+  bd.borrarEjercicio(e.id);
+  res.json({ ok: true });
+});
+
+// ----------------------------------------------------------------- imagenes
+
+// Se sube el fichero crudo por PUT, como la foto de perfil del portal. sharp la
+// recomprime a webp: ademas de pesar menos, eso descarta de paso los metadatos
+// EXIF del movil, que suelen traer el modelo y a veces la ubicacion.
+app.put('/api/ejercicios/:id/imagen',
+  express.raw({ type: ['image/*'], limit: '8mb' }),
+  async (req, res) => {
+    const e = miEjercicio(req);
+    if (!e) return res.status(404).json({ error: 'no-existe' });
+    if (!req.body || !req.body.length) return res.status(400).json({ error: 'vacio' });
+
+    const nombre = `e${e.id}-${Date.now().toString(36)}.webp`;
+    try {
+      await sharp(req.body, { failOn: 'none' })
+        .rotate()
+        .resize({ width: 900, height: 900, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(path.join(IMAGENES, nombre));
+    } catch (err) {
+      return res.status(400).json({ error: 'no-es-imagen' });
+    }
+
+    if (e.imagen) { try { fs.unlinkSync(path.join(IMAGENES, e.imagen)); } catch {} }
+    bd.ponerImagen(e.id, nombre);
+    res.json({ ok: true, imagen: nombre });
+  });
+
+app.delete('/api/ejercicios/:id/imagen', (req, res) => {
+  const e = miEjercicio(req);
+  if (!e) return res.status(404).json({ error: 'no-existe' });
+  if (e.imagen) { try { fs.unlinkSync(path.join(IMAGENES, e.imagen)); } catch {} }
+  bd.ponerImagen(e.id, null);
+  res.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ sesion
+
+app.get('/api/sesion', (req, res) => {
+  const fecha = esFecha(req.query.fecha) ? req.query.fecha : hoy();
+  const grupoId = Number(req.query.grupo);
+  const g = bd.grupo(quien(req), grupoId);
+  if (!g) return res.status(404).json({ error: 'grupo' });
+
+  const s = bd.sesionDe(quien(req), fecha, grupoId);
+  const ejercicios = bd.listarEjercicios(grupoId);
+
+  // Lo de la última vez, para proponerlo de partida. Va aparte de `series` a
+  // propósito: es una sugerencia, no algo guardado, y no debe contar en el
+  // volumen ni en las marcas hasta que se confirme.
+  const ultimaVez = {};
+  for (const e of ejercicios) {
+    if (e.tipo !== 'ejercicio') continue;
+    const u = bd.ultimaVezDe(quien(req), e.id, fecha);
+    if (u) ultimaVez[e.id] = u;
+  }
+
+  res.json({
+    sesion: s,
+    grupo: g,
+    ejercicios,
+    marcas: bd.marcasDe(s.id),
+    series: bd.seriesDe(s.id),
+    ultimaVez,
+  });
+});
+
+// Que la sesion es de quien la toca, igual que con los ejercicios.
+function miSesion(req) {
+  const s = bd.db.prepare('SELECT * FROM sesiones WHERE id = ?').get(Number(req.params.id));
+  return s && s.dueno === quien(req) ? s : null;
+}
+
+app.post('/api/sesion/:id/marca', (req, res) => {
+  const s = miSesion(req);
+  if (!s) return res.status(404).json({ error: 'no-existe' });
+  bd.marcar(s.id, Number(req.body.ejercicio_id), Boolean(req.body.hecho));
+  res.json({ ok: true });
+});
+
+app.post('/api/sesion/:id/serie', (req, res) => {
+  const s = miSesion(req);
+  if (!s) return res.status(404).json({ error: 'no-existe' });
+  bd.guardarSerie({
+    sesion_id: s.id,
+    ejercicio_id: Number(req.body.ejercicio_id),
+    numero: entero(req.body.numero, 1, 50, 1),
+    peso: decimal(req.body.peso),
+    repeticiones: req.body.repeticiones === '' || req.body.repeticiones == null
+      ? null : entero(req.body.repeticiones, 0, 999, null),
+    hecho: req.body.hecho ? 1 : 0,
+  });
+  res.json({ ok: true });
+});
+
+app.delete('/api/sesion/:id/serie', (req, res) => {
+  const s = miSesion(req);
+  if (!s) return res.status(404).json({ error: 'no-existe' });
+  bd.quitarSerie(s.id, Number(req.query.ejercicio), entero(req.query.numero, 1, 50, 1));
+  res.json({ ok: true });
+});
+
+app.post('/api/sesion/:id/notas', (req, res) => {
+  const s = miSesion(req);
+  if (!s) return res.status(404).json({ error: 'no-existe' });
+  bd.guardarNotas(s.id, limpio(req.body.notas, 1000));
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------- progreso
+
+app.get('/api/progreso/:id', (req, res) => {
+  const e = miEjercicio(req);
+  if (!e) return res.status(404).json({ error: 'no-existe' });
+  res.json({ ejercicio: e, puntos: bd.progresoDe(quien(req), e.id) });
+});
+
+app.get('/api/stats', (req, res) => {
+  res.json({
+    resumen: bd.resumen(quien(req)),
+    records: bd.records(quien(req)),
+    historial: bd.historial(quien(req), 60),
+  });
+});
+
+app.use('/api', (req, res) => res.status(404).json({ error: 'no-existe' }));
+
+/*
+ * Comprobación al arrancar de que se puede leer la clave del SSO.
+ *
+ * El módulo compartido se traga el error de lectura a propósito -- para él, no
+ * poder verificar es "no hay sesión" -- y eso, si el permiso falta, deja la app
+ * rechazando a todo el mundo sin una sola línea en el registro que lo explique.
+ * Ya pasó al montarla: l-gym corre con usuario propio y la clave es del grupo
+ * www-data, así que necesita un permiso puntual:
+ *
+ *     setfacl -m u:lgym:r /etc/lepayimio/sso.key
+ *
+ * Si algún día se rota la clave y se recrea el fichero, ese permiso se pierde.
+ * Por eso esto grita al arrancar en vez de fallar en silencio.
+ */
+function comprobarClaveSSO() {
+  const ruta = process.env.SSO_KEY_FILE || '/etc/lepayimio/sso.key';
+  try {
+    if (!fs.readFileSync(ruta).length) throw new Error('está vacía');
+    return true;
+  } catch (e) {
+    console.error('AVISO GRAVE: no puedo leer la clave del SSO en ' + ruta);
+    console.error('  ' + e.message);
+    console.error('  Mientras siga así, nadie va a poder entrar.');
+    console.error('  Se arregla con: setfacl -m u:lgym:r ' + ruta);
+    return false;
+  }
+}
+
+app.listen(PUERTO, '127.0.0.1', () => {
+  console.log(`l-gym en 127.0.0.1:${PUERTO}`);
+  if (comprobarClaveSSO()) console.log('clave del SSO: legible');
+});
+
