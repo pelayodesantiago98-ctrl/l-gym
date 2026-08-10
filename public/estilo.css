@@ -99,7 +99,7 @@ button, input, select, textarea { font: inherit; }
   position: absolute;
   right: 0;
   top: calc(100% + .55rem);
-  min-width: 12rem;
+  min-width: 13rem;
   display: grid;
   gap: .1rem;
   padding: .35rem;
@@ -129,8 +129,18 @@ button, input, select, textarea { font: inherit; }
 
 .menu-linea { border: 0; border-top: 1px solid var(--linea); margin: .3rem .2rem; }
 
-/* En pantalla ancha las secciones son pestañas; aquí sobran. */
-.menu-vistas { display: none; }
+.menu-quien {
+  display: grid;
+  padding: .5rem .7rem .55rem;
+  line-height: 1.25;
+}
+.menu-quien b { font-size: .95rem; }
+.menu-quien small { color: var(--tinta-3); font-size: .75rem; }
+
+.menu-forma { margin: 0; }
+
+/* Las secciones se repiten aquí aunque en pantalla ancha estén en la barra,
+   igual que en L-games y L-tcg: un menú con una sola línea no parece un menú. */
 
 /* ---------------------------------------------------------------- general */
 
@@ -521,7 +531,6 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
      una segunda línea a todo lo ancho, y esa fila se come alto de barra
      pegajosa justo donde menos sobra. */
   .pestanas { display: none; }
-  .menu-vistas { display: block; }
   .menu-usuario { margin-left: auto; }
   .cabecera-dia { grid-template-columns: 1fr; }
   .serie { grid-template-columns: 1.4rem 1fr 3.8rem 24px; gap: .4rem; }

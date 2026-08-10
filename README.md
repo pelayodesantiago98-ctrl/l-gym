@@ -74,13 +74,33 @@ lado: serían dos controles compitiendo por el mismo sitio y por la misma idea
 —«aquí están tus cosas»—, y la foto la sirve el portal, así que ya identifica
 la sesión.
 
-Dentro está **Volver al portal**, y en móvil también las tres secciones. En
-pantalla ancha las secciones siguen siendo pestañas y repetirlas en el menú
-sería ruido; se ocultan con una media query, no con JavaScript.
+Dentro va la misma estructura que en L-games y L-tcg, para que moverse entre
+las apps no obligue a reaprender dónde está cada cosa:
 
-Que en móvil se muden al menú no es solo estética: antes la fila de pestañas
-se iba a una segunda línea a todo lo ancho, y esa fila se come alto de barra
-pegajosa justo en el aparato donde menos sobra.
+```
+Pelayo                    ← quién eres
+L-gym
+Inicio de lepayimio
+─────
+Entreno · Rutinas · Progreso
+─────
+Desconectarse
+```
+
+Las secciones se repiten en el menú aunque en pantalla ancha ya estén en la
+barra. Es a propósito, y es lo que hacen las otras: un menú de una sola línea
+no parece un menú.
+
+En móvil, además, las pestañas de la barra desaparecen y el menú es la única
+forma de cambiar de sección. No es solo estética: esa fila se iba a una
+segunda línea a todo lo ancho y se comía alto de barra pegajosa justo en el
+aparato donde menos sobra.
+
+**Desconectarse va contra `/salir` de esta misma app, no contra el del
+portal.** El nginx del portal corta con 403 lo que llega de otro origen, y
+este subdominio lo es. La galleta es del dominio padre, así que desde aquí se
+puede borrar; hay que repetir dominio y ruta exactos o el navegador no la da
+por la misma y no la borra.
 
 El menú se oculta con el atributo `hidden`, y hace falta un
 `.menu[hidden] { display: none }` explícito: el `display: grid` de la hoja

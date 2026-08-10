@@ -24,15 +24,24 @@
       <img class=avatar src='https://lepayimio.es/perfil/foto' alt='' width=32 height=32>
     </button>
     <div class=menu id=menu-usuario role=menu hidden>
-      <!-- Las secciones solo se ven aquí en móvil: en pantalla ancha siguen
-           siendo pestañas y repetirlas sería ruido. -->
+      <span class=menu-quien><b id=menu-nombre>…</b><small>L-gym</small></span>
+
+      <!-- Enlace externo de verdad: sale del subdominio. -->
+      <a class=menu-opcion role=menuitem href='https://lepayimio.es/'>Inicio de lepayimio</a>
+
+      <hr class=menu-linea>
       <div class=menu-vistas>
         <button type=button class=menu-opcion role=menuitem data-vista=hoy>Entreno</button>
         <button type=button class=menu-opcion role=menuitem data-vista=rutinas>Rutinas</button>
         <button type=button class=menu-opcion role=menuitem data-vista=progreso>Progreso</button>
-        <hr class=menu-linea>
       </div>
-      <a class=menu-opcion role=menuitem href='https://lepayimio.es/'>Volver al portal</a>
+
+      <hr class=menu-linea>
+      <!-- Formulario y no fetch: el portal responde con una redirección a su
+           pantalla de entrada, y así el navegador la sigue solo. -->
+      <form method=post action=/salir class=menu-forma>
+        <button type=submit class=menu-opcion role=menuitem>Desconectarse</button>
+      </form>
     </div>
   </div>
 </header>

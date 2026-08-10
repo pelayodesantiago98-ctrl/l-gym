@@ -59,6 +59,19 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // ------------------------------------------------------------------ rutina
 
+/*
+ * Cerrar sesión. Se hace aquí y no contra el /salir del portal porque su nginx
+ * corta con 403 las peticiones que llegan de otro origen, y este subdominio lo
+ * es. La galleta es del dominio padre, así que desde aquí se puede borrar:
+ * hay que repetir dominio y ruta o el navegador no la da por la misma.
+ */
+app.post('/salir', (req, res) => {
+  res.clearCookie(sso.COOKIE, {
+    httpOnly: true, secure: true, sameSite: 'lax', domain: '.lepayimio.es', path: '/',
+  });
+  res.redirect(sso.LOGIN);
+});
+
 app.get('/api/rutina', (req, res) => {
   const grupos = bd.listarGrupos(quien(req));
   res.json({

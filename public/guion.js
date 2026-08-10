@@ -740,6 +740,7 @@ function grafica(titulo, puntos, campo, unidad) {
 
 async function recargarRutina() {
   estado.rutina = await pedir('/api/rutina');
+  $('#menu-nombre').textContent = estado.rutina.usuario || 'Tu cuenta';
 
   const sel = $('#grupo');
   const antes = sel.value;
