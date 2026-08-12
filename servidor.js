@@ -126,13 +126,27 @@ app.post('/api/ejercicios', (req, res) => {
   const nombre = limpio(req.body.nombre, 80);
   if (nombre.length < 2) return res.status(400).json({ error: 'nombre' });
 
-  res.json(bd.crearEjercicio({
+  const nuevo = bd.crearEjercicio({
     grupo_id: grupoId,
     tipo,
     nombre,
     notas: limpio(req.body.notas, 300),
     series: tipo === 'calentamiento' ? 0 : entero(req.body.series, 1, 12, 3),
-  }));
+  });
+
+  /*
+   * Si viene del catalogo, se queda con la foto que ya habia. Se comprueba
+   * contra la base y no contra el disco: asi lo unico que se puede enlazar es
+   * una foto que de verdad pertenece a algun ejercicio, y no un fichero
+   * cualquiera del directorio.
+   */
+  const imagen = limpio(req.body.imagen, 120);
+  if (imagen && bd.existeImagen(imagen)) {
+    bd.ponerImagen(nuevo.id, imagen);
+    nuevo.imagen = imagen;
+  }
+
+  res.json(nuevo);
 });
 
 app.patch('/api/ejercicios/:id', (req, res) => {
@@ -153,10 +167,22 @@ app.post('/api/ejercicios/:id/mover', (req, res) => {
   res.json({ ok: bd.moverEjercicio(e.id, Number(req.body.direccion) < 0 ? -1 : 1) });
 });
 
+/*
+ * Quitar del disco la foto de un ejercicio, salvo que otro la comparta.
+ *
+ * Desde que los movimientos se pueden coger del catalogo, dos ejercicios de
+ * dos personas distintas pueden apuntar al mismo fichero. Borrarlo sin mirar
+ * dejaba a la otra persona con la ficha sin foto.
+ */
+function soltarImagen(imagen, exceptoId) {
+  if (!imagen || bd.imagenCompartida(imagen, exceptoId)) return;
+  try { fs.unlinkSync(path.join(IMAGENES, imagen)); } catch {}
+}
+
 app.delete('/api/ejercicios/:id', (req, res) => {
   const e = miEjercicio(req);
   if (!e) return res.status(404).json({ error: 'no-existe' });
-  if (e.imagen) { try { fs.unlinkSync(path.join(IMAGENES, e.imagen)); } catch {} }
+  soltarImagen(e.imagen, e.id);
   bd.borrarEjercicio(e.id);
   res.json({ ok: true });
 });
@@ -184,7 +210,7 @@ app.put('/api/ejercicios/:id/imagen',
       return res.status(400).json({ error: 'no-es-imagen' });
     }
 
-    if (e.imagen) { try { fs.unlinkSync(path.join(IMAGENES, e.imagen)); } catch {} }
+    soltarImagen(e.imagen, e.id);
     bd.ponerImagen(e.id, nombre);
     res.json({ ok: true, imagen: nombre });
   });
@@ -192,9 +218,42 @@ app.put('/api/ejercicios/:id/imagen',
 app.delete('/api/ejercicios/:id/imagen', (req, res) => {
   const e = miEjercicio(req);
   if (!e) return res.status(404).json({ error: 'no-existe' });
-  if (e.imagen) { try { fs.unlinkSync(path.join(IMAGENES, e.imagen)); } catch {} }
+  soltarImagen(e.imagen, e.id);
   bd.ponerImagen(e.id, null);
   res.json({ ok: true });
+});
+
+// ------------------------------------------------- rutinas de otra gente
+
+/*
+ * El catalogo de la casa. Lo comparte todo el mundo a proposito: la gracia es
+ * que quien anada "Press banca" se encuentre el que ya existe, con su foto,
+ * en vez de volver a crearlo y a fotografiarlo.
+ */
+app.get('/api/catalogo', (req, res) => {
+  const tipo = req.query.tipo === 'calentamiento' ? 'calentamiento' : 'ejercicio';
+  const q = limpio(req.query.q, 80);
+  if (q.length < 2) return res.json({ movimientos: [] });
+
+  // Los comodines de LIKE se escapan para que no los meta quien busca.
+  const patron = `%${q.replace(/[%_]/g, ' ')}%`;
+  res.json({ movimientos: bd.buscarCatalogo(tipo, patron) });
+});
+
+app.get('/api/rutinas-existentes', (req, res) => {
+  res.json({ rutinas: bd.rutinasExistentes(quien(req)) });
+});
+
+app.get('/api/rutinas-existentes/:id', (req, res) => {
+  const g = bd.rutinaCualquiera(Number(req.params.id));
+  if (!g || g.dueno === quien(req)) return res.status(404).json({ error: 'no-existe' });
+  res.json({ ...g, ejercicios: bd.listarEjercicios(g.id) });
+});
+
+app.post('/api/rutinas-existentes/:id/copiar', (req, res) => {
+  const copia = bd.copiarRutina(quien(req), Number(req.params.id));
+  if (!copia) return res.status(404).json({ error: 'no-existe' });
+  res.json(copia);
 });
 
 // ------------------------------------------------------------------ sesion

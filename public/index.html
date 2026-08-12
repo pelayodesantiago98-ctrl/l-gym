@@ -6,12 +6,18 @@
 <meta name=robots content=noindex>
 <meta name=theme-color content='#0f1216'>
 <title>L-gym</title>
+<link rel=icon href=/img/icono-32.png sizes=32x32>
+<link rel=icon href=/img/icono-192.png sizes=192x192>
+<link rel=apple-touch-icon href=/img/icono-180.png>
 <link rel=stylesheet href=/estilo.css>
 </head>
 <body>
 
 <header class=barra>
-  <span class=marca>L-gym</span>
+  <span class=marca>
+    <img class=marca-icono src=/img/marca.png alt='' width=36 height=36>
+    L-gym
+  </span>
   <nav class=pestanas role=tablist>
     <button type=button class='pestana activa' role=tab data-vista=hoy>Entreno</button>
     <button type=button class=pestana role=tab data-vista=rutinas>Rutinas</button>
@@ -94,6 +100,12 @@
       <input id=nuevo-grupo placeholder='Nuevo grupo: pecho, espalda, pierna…' maxlength=60 required>
       <button type=submit class=boton>Añadir grupo</button>
     </form>
+    <div class=fila-existentes>
+      <button type=button class=boton-lino id=boton-existentes
+              aria-expanded=false aria-controls=panel-existentes>Rutinas existentes</button>
+      <span class=nota id=nota-existentes>Mira lo que han montado los demás y cópiatelo.</span>
+    </div>
+    <div class=panel-existentes id=panel-existentes hidden></div>
     <div id=editor></div>
   </section>
 

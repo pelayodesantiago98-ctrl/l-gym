@@ -56,7 +56,25 @@ button, input, select, textarea { font: inherit; }
   border-bottom: 1px solid var(--linea);
 }
 
-.marca { font-weight: 700; letter-spacing: .02em; }
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+/* El icono de la app al lado del nombre, redondo y con un aro del violeta con
+   el que el portal pinta el acceso a L-gym: el mismo truco que la marca de
+   l-notes. El margen negativo evita que los 36 px estiren la barra. */
+.marca-icono {
+  width: 36px;
+  height: 36px;
+  margin: -4px 0;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #c06bff;
+}
 
 .pestanas { display: flex; gap: .3rem; margin-left: auto; }
 
@@ -565,3 +583,91 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
   * { transition: none !important; }
 }
 
+/* ── Rutinas de otra gente ─────────────────────────────────────────────────
+   El panel de rutinas ajenas y las sugerencias del catálogo al escribir. */
+.fila-existentes {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  flex-wrap: wrap;
+  margin: 0 0 .9rem;
+}
+
+.panel-existentes {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  margin: 0 0 1.2rem;
+}
+
+.existente {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .85rem 1rem;
+  background: var(--fondo-2, rgba(255, 255, 255, .04));
+  border: 1px solid var(--linea, rgba(255, 255, 255, .1));
+  border-radius: 12px;
+}
+
+.existente-nombre { margin: 0; font-size: 1rem; font-weight: 500; }
+.existente-nombre b { font-weight: 700; }
+
+.existente-botones { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.existente-detalle { display: flex; flex-direction: column; gap: .3rem; }
+
+.existente-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.existente-lista li { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
+.existente-lista img { width: 34px; height: 34px; object-fit: cover; border-radius: 7px; }
+
+/* Las sugerencias cuelgan del formulario de añadir, en el flujo y no
+   flotando: en el móvil un desplegable absoluto tapa el propio campo. */
+.sugerencias {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  width: 100%;
+  margin-top: .4rem;
+}
+
+.sugerencias-titulo { margin: 0; font-size: .72rem; opacity: .65; }
+
+.sugerencia {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  width: 100%;
+  padding: .4rem .5rem;
+  background: var(--fondo-2, rgba(255, 255, 255, .04));
+  border: 1px solid var(--linea, rgba(255, 255, 255, .1));
+  border-radius: 10px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sugerencia:hover, .sugerencia:focus-visible { background: var(--fondo-3, rgba(255, 255, 255, .09)); }
+
+.sugerencia img {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex: none;
+}
+
+.sugerencia-sinfoto {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  flex: none;
+  opacity: .4;
+  border: 1px dashed currentColor;
+}
+
+.sugerencia-texto { display: flex; flex-direction: column; min-width: 0; }
+.sugerencia-texto small { opacity: .65; font-size: .74rem; }

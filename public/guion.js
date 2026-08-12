@@ -406,16 +406,203 @@ function subLista(g, tipo, titulo) {
   if (tipo === 'ejercicio') form.append(series);
   form.append(crear('button', 'boton', 'Añadir'));
 
+  // La foto que se lleva el ejercicio si se coge uno del catálogo.
+  let imagenElegida = null;
+
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     await pedir('/api/ejercicios', {
-      cuerpo: { grupo_id: g.id, tipo, nombre: nombre.value, series: series.value },
+      cuerpo: {
+        grupo_id: g.id, tipo, nombre: nombre.value, series: series.value,
+        imagen: imagenElegida,
+      },
     });
+    imagenElegida = null;
     await recargarRutina();
   });
 
   caja.append(form);
+  form.append(buscadorCatalogo(nombre, tipo, (m) => {
+    // Al elegir del catálogo se rellena el formulario y se envía: quien
+    // busca "Press banca" y lo ve con su foto ya ha decidido.
+    nombre.value = m.nombre;
+    if (tipo === 'ejercicio' && m.series) series.value = m.series;
+    imagenElegida = m.imagen || null;
+    form.requestSubmit();
+  }));
   return caja;
+}
+
+/*
+ * Lo que ya existe en la casa, mientras se escribe.
+ *
+ * Es el punto de todo esto: el que añade "Press banca" no tiene que volver a
+ * crearlo ni a hacerle una foto, se queda con el que ya hay. La foto no se
+ * duplica en disco; el ejercicio nuevo apunta al mismo fichero.
+ */
+function buscadorCatalogo(input, tipo, alElegir) {
+  const caja = crear('div', 'sugerencias');
+  caja.hidden = true;
+
+  const cerrar = () => { caja.hidden = true; caja.replaceChildren(); };
+
+  const buscar = conRetraso(async (q) => {
+    if (q.length < 2) return cerrar();
+    let movimientos = [];
+    try {
+      ({ movimientos } = await pedir(
+        `/api/catalogo?tipo=${tipo}&q=${encodeURIComponent(q)}`));
+    } catch { return cerrar(); }
+
+    // Lo que ya está escrito tal cual no es una sugerencia útil.
+    const iguales = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+    movimientos = movimientos.filter((m) => !iguales(m.nombre, input.value));
+    if (!movimientos.length) return cerrar();
+
+    caja.replaceChildren();
+    caja.append(crear('p', 'sugerencias-titulo', 'Ya existen:'));
+    movimientos.forEach((m) => {
+      const b = crear('button', 'sugerencia');
+      b.type = 'button';
+
+      if (m.imagen) {
+        const img = document.createElement('img');
+        img.src = `/imagenes/${m.imagen}`;
+        img.alt = '';
+        img.loading = 'lazy';
+        b.append(img);
+      } else {
+        b.append(crear('span', 'sugerencia-sinfoto', '—'));
+      }
+
+      const txt = crear('span', 'sugerencia-texto');
+      txt.append(crear('b', null, m.nombre));
+      const pistas = [];
+      if (m.imagen) pistas.push('con foto');
+      if (tipo === 'ejercicio' && m.series) pistas.push(`${m.series} series`);
+      if (m.veces > 1) pistas.push(`lo usan ${m.veces}`);
+      if (pistas.length) txt.append(crear('small', null, pistas.join(' · ')));
+      b.append(txt);
+
+      b.addEventListener('click', () => { cerrar(); alElegir(m); });
+      caja.append(b);
+    });
+    caja.hidden = false;
+  }, 250);
+
+  input.addEventListener('input', () => buscar(input.value));
+  input.addEventListener('blur', () => setTimeout(cerrar, 150));
+  return caja;
+}
+
+// ------------------------------------------------- rutinas de otra gente
+
+/*
+ * Las rutinas de los demás, para copiárselas. Se copia la ficha del
+ * movimiento —nombre, notas, series y foto—, nunca lo levantado: el progreso
+ * es de cada uno.
+ */
+async function pintarExistentes() {
+  const panel = $('#panel-existentes');
+  panel.replaceChildren();
+  panel.append(crear('p', 'nota', 'Cargando…'));
+
+  let rutinas = [];
+  try {
+    ({ rutinas } = await pedir('/api/rutinas-existentes'));
+  } catch {
+    panel.replaceChildren(crear('p', 'nota', 'No se han podido cargar.'));
+    return;
+  }
+
+  panel.replaceChildren();
+  if (!rutinas.length) {
+    panel.append(crear('p', 'nota',
+      'Todavía no hay rutinas de otras personas. Cuando alguien monte la suya, aparecerá aquí.'));
+    return;
+  }
+
+  rutinas.forEach((r) => panel.append(fichaExistente(r)));
+}
+
+function fichaExistente(r) {
+  const ficha = crear('article', 'existente');
+
+  // "Rutina «Pecho» de Lepayo" o "Calentamiento diario de Lepayo".
+  const titulo = crear('h3', 'existente-nombre');
+  if (r.diario) {
+    titulo.append(document.createTextNode('Calentamiento diario de '));
+  } else {
+    titulo.append(document.createTextNode('Rutina «'));
+    titulo.append(crear('b', null, r.nombre));
+    titulo.append(document.createTextNode('» de '));
+  }
+  titulo.append(crear('b', null, r.dueno));
+  ficha.append(titulo);
+
+  const cuenta = [];
+  if (r.ejercicios) cuenta.push(`${r.ejercicios} ${r.ejercicios === 1 ? 'ejercicio' : 'ejercicios'}`);
+  if (r.calentamientos) cuenta.push(`${r.calentamientos} de calentamiento`);
+  ficha.append(crear('p', 'nota', cuenta.join(' · ')));
+
+  const detalle = crear('div', 'existente-detalle');
+  detalle.hidden = true;
+
+  const ver = crear('button', 'boton-lino', 'Ver qué lleva');
+  ver.type = 'button';
+  ver.addEventListener('click', async () => {
+    if (!detalle.hidden) { detalle.hidden = true; ver.textContent = 'Ver qué lleva'; return; }
+    ver.textContent = 'Ocultar';
+    detalle.hidden = false;
+    if (detalle.childElementCount) return;
+
+    detalle.append(crear('p', 'nota', 'Cargando…'));
+    const g = await pedir(`/api/rutinas-existentes/${r.id}`);
+    detalle.replaceChildren();
+    for (const [tipo, titulo] of [['calentamiento', 'Calentamiento'], ['ejercicio', 'Ejercicios']]) {
+      const lista = g.ejercicios.filter((e) => e.tipo === tipo);
+      if (!lista.length) continue;
+      detalle.append(crear('h4', 'sublista-titulo', titulo));
+      const ul = crear('ul', 'existente-lista');
+      lista.forEach((e) => {
+        const li = crear('li');
+        if (e.imagen) {
+          const img = document.createElement('img');
+          img.src = `/imagenes/${e.imagen}`;
+          img.alt = '';
+          img.loading = 'lazy';
+          li.append(img);
+        }
+        li.append(crear('span', null, e.nombre
+          + (tipo === 'ejercicio' && e.series ? ` · ${e.series} series` : '')));
+        ul.append(li);
+      });
+      detalle.append(ul);
+    }
+  });
+
+  const copiar = crear('button', 'boton', r.diario ? 'Añadir a mi calentamiento' : 'Copiar a mis rutinas');
+  copiar.type = 'button';
+  copiar.addEventListener('click', async () => {
+    const que = r.diario
+      ? `¿Añadir los movimientos del calentamiento diario de ${r.dueno} al tuyo?`
+      : `¿Copiar la rutina «${r.nombre}» de ${r.dueno} a tus grupos?`;
+    if (!window.confirm(que)) return;
+    copiar.disabled = true;
+    try {
+      const copia = await pedir(`/api/rutinas-existentes/${r.id}/copiar`, { cuerpo: {} });
+      await recargarRutina();
+      copiar.textContent = `Copiada: ${copia.copiados} movimientos`;
+    } catch {
+      copiar.disabled = false;
+      copiar.textContent = 'No se pudo copiar';
+    }
+  });
+
+  const botones = crear('div', 'existente-botones');
+  botones.append(ver, copiar);
+  ficha.append(botones, detalle);
+  return ficha;
 }
 
 function filaEditor(e) {
@@ -789,6 +976,19 @@ async function recargarRutina() {
 
 document.querySelectorAll('.pestana').forEach((b) => {
   b.addEventListener('click', () => mostrar(b.dataset.vista));
+});
+
+// El panel de rutinas ajenas se pide al abrirlo, no al cargar la página: la
+// mayoría de las veces nadie lo abre.
+$('#boton-existentes').addEventListener('click', async () => {
+  const panel = $('#panel-existentes');
+  const boton = $('#boton-existentes');
+  const abrir = panel.hidden;
+
+  panel.hidden = !abrir;
+  boton.setAttribute('aria-expanded', String(abrir));
+  boton.textContent = abrir ? 'Ocultar rutinas existentes' : 'Rutinas existentes';
+  if (abrir) await pintarExistentes();
 });
 
 // ------------------------------------------------------- menú de la foto
