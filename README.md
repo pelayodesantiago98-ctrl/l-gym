@@ -14,6 +14,13 @@ mano. La configuración del servidor vive en
 |---|---|---|
 | ![](assets/screenshots/entreno.png) | ![](assets/screenshots/rutinas.png) | ![](assets/screenshots/movil.png) |
 
+<p align="center">
+  <img src="assets/screenshots/existentes.png" width="760"
+       alt="Las rutinas de otras personas, con el botón para copiarlas">
+</p>
+<p align="center"><sub>Las rutinas son de cada uno, pero se pueden mirar y copiar las de los demás.
+Al copiar se traen nombre, notas, series y foto; lo levantado no, que es de cada cual.</sub></p>
+
 <p align="center"><img src="assets/screenshots/menu.png" width="380" alt="El menú desplegado desde la foto de perfil"></p>
 
 ## La idea
