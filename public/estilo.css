@@ -1008,3 +1008,24 @@ input[type="radio"], input[type="file"], select { cursor: pointer; }
 
 /* Al tocar en el movil, sin el destello gris de Android. */
 html { -webkit-tap-highlight-color: transparent; }
+
+/* Los iconos del menú. Dibujados y no emojis: un emoji lo pinta cada sistema a
+   su manera y en color, así que en el mismo menú convivirían varios estilos.
+   Un SVG hereda el color del texto. */
+.menu-opcion {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.menu-icono {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: currentColor;
+  opacity: .75;
+}
+.menu-opcion:hover .menu-icono { opacity: 1; }
+
+/* La etiqueta del tema empuja su muestra a la derecha; con el icono delante
+   sigue haciendo falta. */
+.menu-opcion.menu-desplegar .menu-etiqueta { flex: 1 1 auto; }
