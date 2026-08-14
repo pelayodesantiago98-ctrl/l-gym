@@ -458,7 +458,180 @@ const imagenCompartida = (nombre, exceptoId) => !!db.prepare(
   'SELECT 1 FROM ejercicios WHERE imagen = ? AND id <> ? LIMIT 1'
 ).get(nombre, exceptoId);
 
+
+// ── El registro ──────────────────────────────────────────────────────────────
+//
+// Lo que se hizo cada dia. Los datos ya estaban —sesiones, marcas y series—,
+// aqui solo se consultan.
+
+/*
+ * Los dias en los que hubo algo, del mas reciente al mas antiguo.
+ *
+ * Un dia puede tener mas de un grupo (mañana pecho, tarde pierna), asi que se
+ * devuelve una fila por dia con la lista de lo que se toco. Se cuenta lo hecho
+ * de verdad —marcas y series— y no lo que la rutina tenia previsto: el registro
+ * es de lo que paso, no de lo que estaba planeado.
+ */
+function diasConSesion(dueno, filtro = {}) {
+  const donde = ['s.dueno = ?'];
+  const args = [dueno];
+  if (filtro.desde) { donde.push('s.fecha >= ?'); args.push(filtro.desde); }
+  if (filtro.hasta) { donde.push('s.fecha <= ?'); args.push(filtro.hasta); }
+  if (filtro.grupoId) { donde.push('s.grupo_id = ?'); args.push(Number(filtro.grupoId)); }
+
+  const filas = db.prepare(`
+    SELECT s.id, s.fecha, s.grupo_id, s.notas, s.terminada, g.nombre AS grupo,
+           (SELECT COUNT(*) FROM marcas m WHERE m.sesion_id = s.id AND m.hecho = 1) AS hechos,
+           (SELECT COUNT(*) FROM series x WHERE x.sesion_id = s.id AND x.hecho = 1) AS series
+    FROM sesiones s
+    JOIN grupos g ON g.id = s.grupo_id
+    WHERE ${donde.join(' AND ')}
+    ORDER BY s.fecha DESC, g.nombre
+  `).all(...args);
+
+  /* Solo los dias en los que se hizo algo: una sesion que se abrio y se cerro
+     sin tocar nada no es un dia de entrenamiento. */
+  const dias = new Map();
+  for (const f of filas) {
+    if (!f.hechos && !f.series) continue;
+    if (!dias.has(f.fecha)) dias.set(f.fecha, { fecha: f.fecha, grupos: [] });
+    dias.get(f.fecha).grupos.push({
+      sesionId: f.id, grupoId: f.grupo_id, grupo: f.grupo,
+      hechos: f.hechos, series: f.series, notas: f.notas, terminada: f.terminada,
+    });
+  }
+  return [...dias.values()];
+}
+
+/* Todo lo de un dia: cada grupo, sus ejercicios y las series que se anotaron. */
+function detalleDelDia(dueno, fecha) {
+  const sesiones = db.prepare(`
+    SELECT s.id, s.grupo_id, s.notas, s.terminada, g.nombre AS grupo
+    FROM sesiones s JOIN grupos g ON g.id = s.grupo_id
+    WHERE s.dueno = ? AND s.fecha = ? ORDER BY g.nombre
+  `).all(dueno, fecha);
+
+  return sesiones.map((s) => {
+    const ejercicios = db.prepare(`
+      SELECT e.id, e.nombre, e.tipo, e.notas, e.series AS previstas,
+             COALESCE(m.hecho, 0) AS hecho
+      FROM ejercicios e
+      LEFT JOIN marcas m ON m.ejercicio_id = e.id AND m.sesion_id = ?
+      WHERE e.grupo_id = ?
+      ORDER BY e.tipo DESC, e.orden, e.id
+    `).all(s.id, s.grupo_id);
+
+    const series = db.prepare(
+      'SELECT ejercicio_id, numero, peso, repeticiones, hecho FROM series ' +
+      'WHERE sesion_id = ? ORDER BY ejercicio_id, numero').all(s.id);
+
+    const porEjercicio = new Map();
+    for (const x of series) {
+      if (!porEjercicio.has(x.ejercicio_id)) porEjercicio.set(x.ejercicio_id, []);
+      porEjercicio.get(x.ejercicio_id).push(x);
+    }
+
+    return {
+      sesionId: s.id, grupoId: s.grupo_id, grupo: s.grupo,
+      notas: s.notas, terminada: s.terminada,
+      ejercicios: ejercicios.map((e) => ({ ...e, series: porEjercicio.get(e.id) || [] })),
+    };
+  });
+}
+
+/* Lo de un periodo, en plano: una fila por serie anotada, mas las sesiones sin
+   series para que un dia de solo calentamiento no desaparezca del volcado. */
+function paraExportar(dueno, desde) {
+  const args = [dueno];
+  let filtro = '';
+  if (desde) { filtro = ' AND s.fecha >= ?'; args.push(desde); }
+
+  return db.prepare(`
+    SELECT s.fecha, g.nombre AS grupo, e.nombre AS ejercicio, e.tipo,
+           x.numero AS serie, x.peso, x.repeticiones, x.hecho,
+           s.notas
+    FROM sesiones s
+    JOIN grupos g ON g.id = s.grupo_id
+    LEFT JOIN series x ON x.sesion_id = s.id
+    LEFT JOIN ejercicios e ON e.id = x.ejercicio_id
+    WHERE s.dueno = ?${filtro}
+    ORDER BY s.fecha DESC, g.nombre, e.nombre, x.numero
+  `).all(...args);
+}
+
+/*
+ * Meter datos de vuelta.
+ *
+ * Se identifica por nombre y no por numero: un volcado de otra instalacion —o
+ * del mismo sitio tras rehacer las rutinas— trae unos identificadores que aqui
+ * no significan nada. Lo que falte se crea; lo que ya este se respeta.
+ *
+ * No borra nada. Importar sobre lo que ya hay añade, no reemplaza: perder un
+ * historial por importar un fichero equivocado no tiene arreglo.
+ */
+function importar(dueno, filas) {
+  let metidas = 0, saltadas = 0;
+  const meter = db.transaction((lista) => {
+    for (const f of lista) {
+      const fecha = String(f.fecha || '').slice(0, 10);
+      const grupo = String(f.grupo || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !grupo) { saltadas++; continue; }
+
+      let g = db.prepare('SELECT id FROM grupos WHERE dueno = ? AND nombre = ?')
+        .get(dueno, grupo);
+      if (!g) {
+        const r = db.prepare(
+          'INSERT INTO grupos (dueno, nombre, orden, creado) VALUES (?, ?, 0, ?)')
+          .run(dueno, grupo, new Date().toISOString());
+        g = { id: r.lastInsertRowid };
+      }
+
+      let s = db.prepare('SELECT id FROM sesiones WHERE dueno = ? AND fecha = ? AND grupo_id = ?')
+        .get(dueno, fecha, g.id);
+      if (!s) {
+        const r = db.prepare(
+          'INSERT INTO sesiones (dueno, fecha, grupo_id, notas, creada) VALUES (?, ?, ?, ?, ?)')
+          .run(dueno, fecha, g.id, String(f.notas || ''), new Date().toISOString());
+        s = { id: r.lastInsertRowid };
+      }
+
+      const nombre = String(f.ejercicio || '').trim();
+      if (!nombre) { metidas++; continue; }   // dia sin series: la sesion ya existe
+
+      let e = db.prepare('SELECT id FROM ejercicios WHERE grupo_id = ? AND nombre = ?')
+        .get(g.id, nombre);
+      if (!e) {
+        const r = db.prepare(
+          'INSERT INTO ejercicios (grupo_id, tipo, nombre, notas, series, orden, creado) ' +
+          "VALUES (?, ?, ?, '', 3, 0, ?)")
+          .run(g.id, f.tipo === 'calentamiento' ? 'calentamiento' : 'ejercicio',
+               nombre, new Date().toISOString());
+        e = { id: r.lastInsertRowid };
+      }
+
+      db.prepare('INSERT OR IGNORE INTO marcas (sesion_id, ejercicio_id, hecho) VALUES (?, ?, 1)')
+        .run(s.id, e.id);
+
+      const numero = Number(f.serie);
+      if (numero) {
+        db.prepare('INSERT OR REPLACE INTO series ' +
+                   '(sesion_id, ejercicio_id, numero, peso, repeticiones, hecho) ' +
+                   'VALUES (?, ?, ?, ?, ?, ?)')
+          .run(s.id, e.id, numero,
+               f.peso === '' || f.peso == null ? null : Number(f.peso),
+               f.repeticiones === '' || f.repeticiones == null ? null : Number(f.repeticiones),
+               Number(f.hecho) ? 1 : 0);
+      }
+      metidas++;
+    }
+  });
+  meter(filas);
+  return { metidas, saltadas };
+}
+
+
 module.exports = {
+  diasConSesion, detalleDelDia, paraExportar, importar,
   db,
   listarGrupos, crearGrupo, grupo, renombrarGrupo, borrarGrupo, grupoDiario,
   listarEjercicios, ejercicio, crearEjercicio, editarEjercicio,

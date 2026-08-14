@@ -513,7 +513,7 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
    escritorio, y un número de tres cifras no necesita 600 px. */
 .serie {
   display: grid;
-  grid-template-columns: 1.6rem minmax(4.5rem, 8rem) 4.5rem 24px;
+  grid-template-columns: 1.6rem minmax(min(4.5rem, 100%), 8rem) 4.5rem 24px;
   gap: .5rem;
   align-items: center;
   justify-content: start;
@@ -585,7 +585,7 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
 
 .tarjetas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
   gap: .8rem;
 }
 
@@ -909,3 +909,65 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
   align-items: center;
   gap: .5rem;
 }
+
+/* ── El menú, opaco ──────────────────────────────────────────────────────
+   Translúcido se lee mal: el menu va encima del contenido, y detrás hay
+   texto y tablas que se transparentan justo donde hay que leer. */
+.menu {
+  background: var(--fondo, #12151c);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* El tema, desplegado aquí mismo. Sangrado para que se lea que cuelga de la
+   entrada de arriba. */
+.menu #submenu-temas {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .15rem;
+  margin: .15rem 0 .15rem .6rem;
+}
+.menu #submenu-temas[hidden] { display: none; }
+
+/* ── El registro ─────────────────────────────────────────────────────── */
+.reg-dia {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  width: 100%;
+  margin-bottom: .4rem;
+  padding: .7rem .9rem;
+  border: 1px solid var(--linea);
+  border-radius: .7rem;
+  background: var(--superficie);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.reg-dia:hover { background: var(--superficie-alta); }
+.reg-ejercicio { margin: .3rem 0; }
+
+/* El panel de exportar. */
+.reg-panel { display: grid; gap: .9rem; padding: 1rem; }
+.reg-grupo-op { display: grid; gap: .35rem; }
+.reg-opciones { display: flex; flex-wrap: wrap; gap: .35rem; }
+.reg-opciones .boton-lino.on {
+  border-color: var(--acento);
+  background: var(--acento-apagado);
+  color: var(--acento);
+}
+.reg-cuantas { margin: 0; }
+.reg-bajar[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* El avatar, pegado a la derecha. Antes eran las pestañas las que empujaban;
+   al quitarlas se quedo junto a la marca. */
+.barra .menu-usuario { margin-left: auto; }
+
+/* ── Que nada ensanche la pagina ─────────────────────────────────────────
+   Un hijo que no cabe estira el documento entero, y entonces la barra de
+   arriba —que mide el ancho de la ventana— se queda corta al desplazar de
+   lado. Esto no oculta nada: solo deja que las cajas encojan, que es lo que
+   por defecto NO hacen dentro de un grid o un flex. */
+.vista, .bloque, .tarjetas, .tarjeta { min-width: 0; }
+.tabla-envoltura { max-width: 100%; overflow-x: auto; }

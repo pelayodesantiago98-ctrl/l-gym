@@ -416,6 +416,92 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
+// ── El registro ──────────────────────────────────────────────────────────────
+
+/* Los dias en los que se entreno. Se puede acotar por fechas y por grupo. */
+app.get('/api/registro', (req, res) => {
+  const q = req.query || {};
+  res.json({
+    dias: bd.diasConSesion(quien(req), {
+      desde: /^\d{4}-\d{2}-\d{2}$/.test(String(q.desde || '')) ? String(q.desde) : null,
+      hasta: /^\d{4}-\d{2}-\d{2}$/.test(String(q.hasta || '')) ? String(q.hasta) : null,
+      grupoId: Number(q.grupo) || null,
+    }),
+  });
+});
+
+/* Todo lo de un dia. */
+app.get('/api/registro/:fecha', (req, res) => {
+  const fecha = String(req.params.fecha || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return res.status(400).json({ error: 'Esa fecha no vale.' });
+  }
+  res.json({ fecha, sesiones: bd.detalleDelDia(quien(req), fecha) });
+});
+
+/*
+ * Sacar los datos.
+ *
+ * El periodo se cuenta en dias hacia atras desde hoy, y «todo» no pone limite.
+ * En CSV va una fila por serie: es lo que abre una hoja de calculo sin tener
+ * que deshacer nada. En JSON, lo mismo pero sin aplanar.
+ */
+const PERIODOS = { '24h': 1, '7d': 7, '30d': 30, '1a': 365, todo: null };
+
+app.get('/api/exportar', (req, res) => {
+  const q = req.query || {};
+  if (!(String(q.periodo) in PERIODOS)) {
+    return res.status(400).json({ error: 'Periodo desconocido.' });
+  }
+  const dias = PERIODOS[String(q.periodo)];
+  let desde = null;
+  if (dias !== null) {
+    const d = new Date();
+    d.setDate(d.getDate() - dias);
+    desde = d.toISOString().slice(0, 10);
+  }
+
+  const filas = bd.paraExportar(quien(req), desde);
+  const sello = new Date().toISOString().slice(0, 10);
+  const nombre = 'l-gym-' + String(q.periodo) + '-' + sello;
+
+  if (String(q.formato) === 'csv') {
+    /* Punto y coma y BOM: es lo que hace que Excel en español lo abra en
+       columnas y con los acentos bien a la primera. */
+    const cab = ['fecha', 'grupo', 'ejercicio', 'tipo', 'serie', 'peso',
+                 'repeticiones', 'hecho', 'notas'];
+    const escapar = (v) => {
+      const t = v === null || v === undefined ? '' : String(v);
+      return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    };
+    const cuerpo = [cab.join(';')].concat(
+      filas.map((f) => cab.map((c) => escapar(f[c])).join(';'))).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + nombre + '.csv"');
+    return res.send('\ufeff' + cuerpo);
+  }
+
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="' + nombre + '.json"');
+  res.send(JSON.stringify({ exportado: new Date().toISOString(),
+                            periodo: String(q.periodo), filas }, null, 2));
+});
+
+/* Y meterlos de vuelta. Añade; no borra nada de lo que ya haya. */
+app.post('/api/importar', (req, res) => {
+  const d = req.body || {};
+  const filas = Array.isArray(d) ? d : (Array.isArray(d.filas) ? d.filas : null);
+  if (!filas) return res.status(400).json({ error: 'No veo las filas.' });
+  if (filas.length > 20000) {
+    return res.status(413).json({ error: 'Demasiadas filas de una vez.' });
+  }
+  try {
+    res.json(bd.importar(quien(req), filas));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use('/api', (req, res) => res.status(404).json({ error: 'no-existe' }));
 
 /*
@@ -445,6 +531,9 @@ function comprobarClaveSSO() {
     return false;
   }
 }
+
+
+
 
 app.listen(PUERTO, '127.0.0.1', () => {
   console.log(`l-gym en 127.0.0.1:${PUERTO}`);

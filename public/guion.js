@@ -51,7 +51,7 @@ function conRetraso(fn, ms) {
 
 // ---------------------------------------------------------------- pestañas
 
-const VISTAS = ['hoy', 'rutinas', 'progreso'];
+const VISTAS = ['hoy', 'rutinas', 'progreso', 'registro'];
 
 function mostrar(vista, tocarUrl = true) {
   if (!VISTAS.includes(vista)) vista = 'hoy';
@@ -1168,27 +1168,293 @@ document.querySelectorAll('.menu-tema[data-tema]').forEach((b) => {
 const abrirTemas = document.getElementById('abrir-temas');
 const submenuTemas = document.getElementById('submenu-temas');
 if (abrirTemas && submenuTemas) {
-  abrirTemas.addEventListener('click', () => abrirVentanaTema(true));
+  abrirTemas.addEventListener('click', () => abrirVentanaTema(submenuTemas.hidden));
 }
 
-/* Abrir y cerrar la ventana. Al abrirla se cierra el menú de usuario: dejar los
-   dos abiertos a la vez tapa media pantalla y no aporta nada. */
+/* Desplegar la lista de temas ahi mismo. Antes abria una ventana en el centro:
+   para elegir entre tres colores era mucho aparato, y encima tapaba lo que
+   estabas mirando. Ahora cuelga de su entrada y el menu se queda abierto. */
 function abrirVentanaTema(v) {
-  const velo = document.getElementById('tema-velo');
-  if (!velo) return;
-  velo.hidden = !v;
-  if (v && typeof abrirMenu === 'function') abrirMenu(false);
+  if (!submenuTemas) return;
+  submenuTemas.hidden = !v;
   if (abrirTemas) abrirTemas.setAttribute('aria-expanded', v ? 'true' : 'false');
 }
 
-const veloTema = document.getElementById('tema-velo');
-if (veloTema) {
-  veloTema.addEventListener('click', (e) => {
-    if (e.target === veloTema || e.target.closest('[data-cierra-tema]')) abrirVentanaTema(false);
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !veloTema.hidden) abrirVentanaTema(false);
-  });
-}
 
 marcarTema(temaActual());
+
+
+// ── Registro ─────────────────────────────────────────────────────────────────
+//
+// Lo que se hizo cada dia. Los datos ya estaban guardados; esto solo los
+// enseña, los filtra y los saca o mete en un fichero.
+
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const dias = $('reg-dias');
+  if (!dias) return;
+
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+                 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  function enCristiano(iso) {
+    const [a, m, d] = iso.split('-').map(Number);
+    return d + ' de ' + MESES[m - 1] + (a !== new Date().getFullYear() ? ' de ' + a : '');
+  }
+
+  async function pedir(ruta, opciones) {
+    const r = await fetch(ruta, Object.assign({ credentials: 'same-origin' }, opciones));
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ('Error ' + r.status));
+    return d;
+  }
+
+  function avisar(texto, mal) {
+    const a = $('aviso-registro');
+    a.textContent = texto || '';
+    a.className = 'aviso' + (mal ? ' malo' : '');
+  }
+
+  async function pintar() {
+    const q = [];
+    if ($('reg-desde').value) q.push('desde=' + $('reg-desde').value);
+    if ($('reg-grupo').value) q.push('grupo=' + $('reg-grupo').value);
+    dias.textContent = 'Cargando…';
+    $('reg-detalle').textContent = '';
+    try {
+      const d = await pedir('/api/registro' + (q.length ? '?' + q.join('&') : ''));
+      dias.textContent = '';
+      if (!d.dias.length) {
+        dias.innerHTML = '<p class=nota>Ningún día con entrenamiento por aquí.</p>';
+        return;
+      }
+      d.dias.forEach((dia) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'reg-dia';
+        const cuando = document.createElement('b');
+        cuando.textContent = enCristiano(dia.fecha);
+        const que = document.createElement('span');
+        que.className = 'nota';
+        que.textContent = dia.grupos.map((x) => x.grupo).join(', ');
+        b.append(cuando, que);
+        b.addEventListener('click', () => verDia(dia.fecha));
+        dias.appendChild(b);
+      });
+    } catch (e) { dias.textContent = ''; avisar(e.message, true); }
+  }
+
+  async function verDia(fecha) {
+    const caja = $('reg-detalle');
+    caja.textContent = 'Cargando…';
+    try {
+      const d = await pedir('/api/registro/' + fecha);
+      caja.textContent = '';
+      const h = document.createElement('h2');
+      h.className = 'titulo-bloque';
+      h.textContent = enCristiano(fecha);
+      caja.appendChild(h);
+
+      d.sesiones.forEach((s) => {
+        const sec = document.createElement('section');
+        sec.className = 'bloque';
+        const t = document.createElement('h3');
+        t.className = 'titulo-bloque';
+        t.textContent = s.grupo;
+        sec.appendChild(t);
+
+        s.ejercicios.forEach((e) => {
+          /* Solo lo que se toco: la rutina entera con veinte ejercicios sin
+             hacer no dice lo que paso ese dia. */
+          if (!e.hecho && !e.series.length) return;
+          const p = document.createElement('p');
+          p.className = 'reg-ejercicio';
+          const n = document.createElement('b');
+          n.textContent = e.nombre;
+          p.appendChild(n);
+          if (e.series.length) {
+            const s2 = document.createElement('span');
+            s2.className = 'nota';
+            s2.textContent = ' — ' + e.series.map((x) =>
+              (x.peso == null ? '?' : x.peso) + ' kg × ' +
+              (x.repeticiones == null ? '?' : x.repeticiones)).join(' · ');
+            p.appendChild(s2);
+          }
+          sec.appendChild(p);
+        });
+
+        if (s.notas) {
+          const nt = document.createElement('p');
+          nt.className = 'nota';
+          nt.textContent = 'Notas: ' + s.notas;
+          sec.appendChild(nt);
+        }
+        caja.appendChild(sec);
+      });
+      caja.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) { caja.textContent = ''; avisar(e.message, true); }
+  }
+
+  // ── Sacar y meter ──────────────────────────────────────────────────────
+  /* ── El panel de exportar ────────────────────────────────────────────
+     Se construye una vez y se despliega. Con el periodo y el formato a la
+     vista se ve de un vistazo que hay, y antes de pulsar dice cuantas filas
+     se va a llevar: exportar «todo» y recibir un fichero vacio, o creer que
+     bajas un año y bajarte un dia, es justo lo que se quiere evitar. */
+
+  const PERIODOS = [
+    ['24h', 'Últimas 24 horas'],
+    ['7d', 'Últimos 7 días'],
+    ['30d', 'Últimos 30 días'],
+    ['1a', 'Último año'],
+    ['todo', 'Todo'],
+  ];
+
+  let panelExportar = null;
+  let elegido = { periodo: '30d', formato: 'csv' };
+
+  function grupoBotones(etiqueta, opciones, cual, alElegir) {
+    const caja = document.createElement('div');
+    caja.className = 'reg-grupo-op';
+    const t = document.createElement('span');
+    t.className = 'nota';
+    t.textContent = etiqueta;
+    caja.appendChild(t);
+
+    const fila = document.createElement('div');
+    fila.className = 'reg-opciones';
+    opciones.forEach(([valor, texto]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'boton-lino' + (valor === cual() ? ' on' : '');
+      b.textContent = texto;
+      b.addEventListener('click', () => {
+        alElegir(valor);
+        fila.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        contar();
+      });
+      fila.appendChild(b);
+    });
+    caja.appendChild(fila);
+    return caja;
+  }
+
+  async function contar() {
+    const aviso = panelExportar.querySelector('.reg-cuantas');
+    aviso.textContent = 'Contando…';
+    try {
+      const d = await pedir('/api/exportar?formato=json&periodo='
+        + encodeURIComponent(elegido.periodo));
+      const n = (d.filas || []).length;
+      aviso.textContent = n === 0 ? 'No hay nada en ese periodo.'
+        : n + (n === 1 ? ' fila' : ' filas') + ' se van a exportar.';
+      panelExportar.querySelector('.reg-bajar').disabled = n === 0;
+    } catch (e) {
+      aviso.textContent = 'No he podido contarlas: ' + e.message;
+    }
+  }
+
+  function construirPanel() {
+    const caja = document.createElement('div');
+    caja.className = 'panel-existentes reg-panel';
+    caja.hidden = true;
+
+    caja.appendChild(grupoBotones('De cuándo', PERIODOS,
+      () => elegido.periodo, (v) => { elegido.periodo = v; }));
+    caja.appendChild(grupoBotones('En qué formato',
+      [['csv', 'CSV (hoja de cálculo)'], ['json', 'JSON']],
+      () => elegido.formato, (v) => { elegido.formato = v; }));
+
+    const cuantas = document.createElement('p');
+    cuantas.className = 'nota reg-cuantas';
+    caja.appendChild(cuantas);
+
+    const bajar = document.createElement('button');
+    bajar.type = 'button';
+    bajar.className = 'boton reg-bajar';
+    bajar.textContent = 'Exportar';
+    bajar.addEventListener('click', () => {
+      /* Se navega en vez de pedirlo por fetch: asi el navegador se encarga de
+         guardar el fichero con su nombre, que es lo que se espera de un boton
+         que pone «exportar». */
+      location.href = '/api/exportar?periodo=' + encodeURIComponent(elegido.periodo)
+        + '&formato=' + encodeURIComponent(elegido.formato);
+    });
+    caja.appendChild(bajar);
+
+    return caja;
+  }
+
+  $('reg-exportar').addEventListener('click', () => {
+    if (!panelExportar) {
+      panelExportar = construirPanel();
+      $('reg-exportar').closest('.fila-existentes').after(panelExportar);
+    }
+    panelExportar.hidden = !panelExportar.hidden;
+    $('reg-exportar').setAttribute('aria-expanded', panelExportar.hidden ? 'false' : 'true');
+    if (!panelExportar.hidden) contar();
+  });
+
+  $('reg-importar').addEventListener('click', () => $('reg-fichero').click());
+
+  $('reg-fichero').addEventListener('change', async function () {
+    const f = this.files[0];
+    if (!f) return;
+    this.value = '';
+    try {
+      const texto = await f.text();
+      let filas;
+      if (f.name.toLowerCase().endsWith('.csv')) {
+        const lineas = texto.replace(/^\ufeff/, '').split(/\r?\n/).filter(Boolean);
+        const cab = lineas.shift().split(';');
+        filas = lineas.map((l) => {
+          const partes = l.split(';');
+          const o = {};
+          cab.forEach((c, i) => { o[c] = (partes[i] || '').replace(/^"|"$/g, ''); });
+          return o;
+        });
+      } else {
+        const d = JSON.parse(texto);
+        filas = Array.isArray(d) ? d : d.filas;
+      }
+      if (!Array.isArray(filas)) throw new Error('No entiendo ese fichero.');
+      const r = await pedir('/api/importar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filas }),
+      });
+      avisar(r.metidas + ' filas metidas' +
+             (r.saltadas ? ', ' + r.saltadas + ' saltadas por venir mal' : '') + '.');
+      pintar();
+    } catch (e) { avisar(e.message, true); }
+  });
+
+  $('reg-desde').addEventListener('change', pintar);
+  $('reg-grupo').addEventListener('change', pintar);
+  $('reg-limpiar').addEventListener('click', () => {
+    $('reg-desde').value = '';
+    $('reg-grupo').value = '';
+    pintar();
+  });
+
+  /* Se carga al entrar en la vista, no al abrir la pagina: quien no mire el
+     registro no tiene por que pagar la consulta. */
+  document.querySelectorAll('[data-vista=registro]').forEach((b) => {
+    b.addEventListener('click', () => {
+      /* Los grupos, para el filtro, salen de lo que ya tiene la pantalla. */
+      const origen = $('grupo');
+      const destino = $('reg-grupo');
+      if (origen && destino.options.length <= 1) {
+        Array.from(origen.options).forEach((o) => {
+          if (!o.value) return;
+          const n = document.createElement('option');
+          n.value = o.value;
+          n.textContent = o.textContent;
+          destino.appendChild(n);
+        });
+      }
+      pintar();
+    });
+  });
+})();
