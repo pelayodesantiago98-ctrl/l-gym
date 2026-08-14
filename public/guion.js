@@ -1080,3 +1080,115 @@ $('#form-grupo').addEventListener('submit', async (ev) => {
   mostrar(location.hash.slice(1) || 'hoy', false);
 })();
 
+
+/* ── Tema ────────────────────────────────────────────────────────────────────
+ *
+ * La elección se guarda en el SERVIDOR, por usuario: así te sigue del móvil al
+ * ordenador. Antes esto iba en localStorage y era de cada dispositivo.
+ *
+ * Aquí no se aplica el tema al cargar. Ya viene marcado en el <html> desde el
+ * servidor, que es lo que evita ver un fogonazo del tema por defecto mientras
+ * carga este fichero.
+ */
+const TEMAS_GYM = ['oscuro', 'crystal', 'dark-crystal'];
+
+/* El color de la barra del navegador en el móvil. Sin actualizarlo se queda el
+   del tema anterior y aparece una franja que no pega con la pantalla. */
+const COLOR_BARRA = { oscuro: '#0f1216', crystal: '#c7dcf2', 'dark-crystal': '#131a24' };
+
+const temaActual = () => document.documentElement.dataset.tema || 'oscuro';
+
+const ICONOS_TEMA = {
+
+  'oscuro': '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>',
+
+  'crystal': '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>',
+
+  'dark-crystal': '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>',
+
+};
+
+const NOMBRE_TEMA = { oscuro: 'Oscuro', crystal: 'Crystal', 'dark-crystal': 'Dark Crystal' };
+
+function marcarTema(tema) {
+  document.querySelectorAll('.menu-tema[data-tema]').forEach((b) => {
+    const suyo = b.dataset.tema === tema;
+    b.classList.toggle('activa', suyo);
+    b.setAttribute('aria-checked', suyo ? 'true' : 'false');
+  });
+  /* El nombre a la derecha de "Tema": sin él hay que desplegar para saber
+     cuál está puesto. */
+  const puesto = document.getElementById('tema-actual');
+  /* El icono del tema puesto. El nombre sigue haciendo falta, pero
+     para el lector de pantalla: un icono solo no dice nada. */
+  if (puesto) {
+    puesto.className = 'tema-muestra tema-mini ' + tema;
+    puesto.innerHTML = ICONOS_TEMA[tema] || '';
+  }
+  if (abrirTemas) abrirTemas.setAttribute('aria-label', 'Tema: ' + (NOMBRE_TEMA[tema] || tema));
+}
+
+async function ponerTema(tema) {
+  if (!TEMAS_GYM.includes(tema)) return;
+  const antes = temaActual();
+
+  /* Se aplica primero y se guarda después: el cambio de tema tiene que sentirse
+     instantáneo, y esperar a la red para pintar lo haría parecer lento. */
+  if (tema === 'oscuro') delete document.documentElement.dataset.tema;
+  else document.documentElement.dataset.tema = tema;
+
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.content = COLOR_BARRA[tema];
+  marcarTema(tema);
+
+  try {
+    const r = await fetch('/api/tema', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tema }),
+    });
+    if (!r.ok) throw new Error('no se ha guardado');
+  } catch {
+    /* Si no se pudo guardar se vuelve atrás, en vez de dejar la pantalla
+       diciendo una cosa y el servidor recordando otra: al recargar volvería el
+       anterior y parecería que el botón no funciona. */
+    if (antes === 'oscuro') delete document.documentElement.dataset.tema;
+    else document.documentElement.dataset.tema = antes;
+    if (meta) meta.content = COLOR_BARRA[antes];
+    marcarTema(antes);
+  }
+}
+
+document.querySelectorAll('.menu-tema[data-tema]').forEach((b) => {
+  b.addEventListener('click', () => ponerTema(b.dataset.tema));
+});
+
+/* Desplegar y plegar. El menú entero se cierra al pulsar fuera, así que esto
+   solo tiene que ocuparse de abrir y cerrar su propia lista. */
+const abrirTemas = document.getElementById('abrir-temas');
+const submenuTemas = document.getElementById('submenu-temas');
+if (abrirTemas && submenuTemas) {
+  abrirTemas.addEventListener('click', () => abrirVentanaTema(true));
+}
+
+/* Abrir y cerrar la ventana. Al abrirla se cierra el menú de usuario: dejar los
+   dos abiertos a la vez tapa media pantalla y no aporta nada. */
+function abrirVentanaTema(v) {
+  const velo = document.getElementById('tema-velo');
+  if (!velo) return;
+  velo.hidden = !v;
+  if (v && typeof abrirMenu === 'function') abrirMenu(false);
+  if (abrirTemas) abrirTemas.setAttribute('aria-expanded', v ? 'true' : 'false');
+}
+
+const veloTema = document.getElementById('tema-velo');
+if (veloTema) {
+  veloTema.addEventListener('click', (e) => {
+    if (e.target === veloTema || e.target.closest('[data-cierra-tema]')) abrirVentanaTema(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !veloTema.hidden) abrirVentanaTema(false);
+  });
+}
+
+marcarTema(temaActual());

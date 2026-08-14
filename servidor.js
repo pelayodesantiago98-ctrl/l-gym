@@ -12,6 +12,7 @@ const path = require('path');
 const sharp = require('sharp');
 
 const sso = require('/usr/local/lib/lepayimio/sso');
+const temas = require('/usr/local/lib/lepayimio/tema');
 const bd = require('./basedatos');
 
 const PUERTO = Number(process.env.PUERTO || 3007);
@@ -45,6 +46,45 @@ const decimal = (v) => {
 
 app.use(sso.exigirSesion());
 const quien = (req) => req.sesion.id;
+
+/* El tema elegido, por usuario y en el servidor: así te sigue del móvil al
+   ordenador. Fichero propio en datos/, que ya es de lgym y se respalda con
+   el resto. */
+const tema = temas.crear(
+  path.join(__dirname, 'datos', 'temas.json'),
+  ['oscuro', 'crystal', 'dark-crystal'],
+  'oscuro');
+
+tema.rutas(app, quien);
+
+/*
+ * La portada se sirve a mano para poder marcarle el tema al <html> antes de
+ * mandarla. Va ANTES del express.static de abajo o lo serviría él tal cual.
+ *
+ * Hacerlo aquí y no en el navegador es lo que quita el fogonazo: aplicándolo
+ * desde el cliente hay que pintar primero el tema por defecto y corregirlo
+ * después, y ese parpadeo se ve en cada carga.
+ */
+app.get('/', (req, res, siguiente) => {
+  fs.readFile(path.join(__dirname, 'public', 'index.html'), 'utf8', (err, html) => {
+    if (err) return siguiente(err);
+
+    /* La fecha de cada estático metida en su URL.
+       Los estáticos van con cinco minutos de caché, y sin número de versión un
+       cambio de CSS o de JS tarda ese rato en verse: el navegador reutiliza el
+       que ya tiene y Cloudflare puede tener el suyo. Lo peor es el término
+       medio -- HTML nuevo con estilo viejo -- porque parece un fallo del código
+       y no de la caché. Con ?v=<fecha> la URL cambia cuando cambia el fichero. */
+    for (const est of ['estilo.css', 'guion.js']) {
+      let v = 0;
+      try { v = Math.floor(fs.statSync(path.join(__dirname, 'public', est)).mtimeMs); } catch {}
+      if (v) html = html.split('/' + est).join('/' + est + '?v=' + v);
+    }
+
+    res.set('Cache-Control', 'no-store');
+    res.type('html').send(tema.inyectar(html, tema.de(quien(req))));
+  });
+});
 
 // Todo detras del SSO, tambien los estaticos. Las fotos de los ejercicios son
 // del usuario, y servirlas desde nginx las dejaria abiertas a quien acertase

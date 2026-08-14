@@ -16,6 +16,112 @@
   --ancho: 62rem;
 }
 
+/* ── Temas ──────────────────────────────────────────────────────────────────
+ *
+ * Las variables de arriba son el tema por defecto y siguen siendo el oscuro de
+ * siempre. Estos dos bloques las sustituyen cuando <html> lleva data-tema.
+ *
+ * Los tonos vienen de los temas Crystal de l-notes, readaptados: allí la hoja
+ * maneja unas cuarenta variables y aquí hay doce, así que esto no es una copia
+ * sino la misma idea con menos piezas. Lo que los hermana es el azul y, sobre
+ * todo, que las superficies sean translúcidas en lugar de opacas.
+ *
+ * Ganan al `:root { color-scheme: dark }` del final del fichero por
+ * especificidad —un atributo pesa más que el pseudo-elemento solo—, así que no
+ * importa que aquel se escriba después.
+ */
+
+:root[data-tema="crystal"] {
+  --fondo: #c7dcf2;                        /* el azul del portal, subido de luz */
+  --superficie: rgba(255,255,255,0.72);    /* cristal, no blanco */
+  --superficie-alta: rgba(255,255,255,0.9);
+  /* La línea es BLANCA, no gris: sobre cristal una línea clara lee como el
+     canto del panel, y una oscura como una grieta. */
+  --linea: rgba(255,255,255,0.75);
+  /* Gris azulado y no negro: sobre fondo claro el negro puro resulta duro y se
+     lee igual de bien con menos peso. */
+  --tinta: #33465e;
+  --tinta-2: rgba(51,70,94,0.72);
+  --tinta-3: rgba(51,70,94,0.48);
+  /* Azul más profundo que el del tema oscuro: allí va sobre negro y aquí sobre
+     azul claro, así que tiene que bajar para mantener el contraste. */
+  --acento: #0060df;
+  --acento-apagado: rgba(0,96,223,0.16);
+  --bien: #0f7a4f;                         /* el verde claro del tema oscuro desaparecería aquí */
+  --peligro: #d92c20;
+  color-scheme: light;
+}
+
+:root[data-tema="dark-crystal"] {
+  --fondo: #131a24;                        /* gris azulado, no negro: el azul es lo que lo emparenta */
+  --superficie: rgba(255,255,255,0.07);
+  --superficie-alta: rgba(255,255,255,0.12);
+  --linea: rgba(255,255,255,0.14);         /* el canto del cristal recogiendo luz */
+  --tinta: #dbe6f4;
+  --tinta-2: rgba(219,230,244,0.68);
+  --tinta-3: rgba(219,230,244,0.42);
+  /* Azul más luminoso que en el claro: sobre oscuro, el azul profundo se apaga
+     y deja de leerse como algo que se pueda pulsar. */
+  --acento: #4da3ff;
+  --acento-apagado: rgba(77,163,255,0.22);
+  --bien: #5fd39a;
+  --peligro: #ff6b60;
+  color-scheme: dark;
+}
+
+/* El fondo no es plano en estos temas, y no es un adorno: las superficies son
+   translúcidas, así que necesitan algo DEBAJO que se transparente. Sobre un
+   color liso, el mismo blanco al 72% se vería como un gris cualquiera y se
+   perdería el efecto entero. */
+:root[data-tema="crystal"] body {
+  background:
+    radial-gradient(1100px 760px at 12% -12%, #eef5ff 0%, rgba(238,245,255,0) 62%),
+    radial-gradient(900px 700px at 108% 6%, #d3e6ff 0%, rgba(211,230,255,0) 58%),
+    var(--fondo);
+  background-attachment: fixed;
+}
+:root[data-tema="dark-crystal"] body {
+  background:
+    radial-gradient(1100px 760px at 12% -12%, #1d2a3a 0%, rgba(29,42,58,0) 62%),
+    radial-gradient(900px 700px at 108% 6%, #16212f 0%, rgba(22,33,47,0) 58%),
+    var(--fondo);
+  background-attachment: fixed;
+}
+
+/* El desenfoque va donde de verdad se nota: la barra es pegajosa y el contenido
+   le pasa por debajo al hacer scroll. En una tarjeta quieta no hay movimiento
+   que revele el cristal, y cuesta pintura en cada repintado. */
+:root[data-tema="crystal"] .barra,
+:root[data-tema="dark-crystal"] .barra {
+  background: var(--superficie);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--linea);
+}
+:root[data-tema="crystal"] .menu,
+:root[data-tema="dark-crystal"] .menu {
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+
+/* La entrada que despliega los temas: etiqueta a la izquierda, el que está
+   puesto a la derecha en gris, y la flecha girando al abrir. */
+.menu-desplegar { display: flex; align-items: center; gap: .5rem; }
+.menu-etiqueta { flex: 1 1 auto; }
+.menu-valor { color: var(--tinta-3); font-size: .85rem; }
+.menu-flecha {
+  width: 16px; height: 16px; flex: 0 0 auto;
+  fill: var(--tinta-3);
+  transform: rotate(90deg);
+  transition: transform .15s ease;
+}
+.menu-desplegar[aria-expanded=true] .menu-flecha { transform: rotate(-90deg); }
+
+/* Los temas van sangrados para que se lea que cuelgan de la entrada de arriba
+   y no son opciones sueltas del menú. */
+
+/* Los botones del tema, con su muestra de color al lado. */
+
 * { box-sizing: border-box; }
 
 body {
@@ -671,3 +777,135 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
 
 .sugerencia-texto { display: flex; flex-direction: column; min-width: 0; }
 .sugerencia-texto small { opacity: .65; font-size: .74rem; }
+
+/* ── Selector de tema, con el aspecto del de l-notes ─────────────────────────
+   Botón con la muestra a la izquierda, el nombre y la marca de verificación
+   que solo aparece en el que está puesto. Antes era un puntito de color en una
+   línea de menú: se veía, pero no se reconocía como el mismo selector que hay
+   en l-notes, que es de lo que se trataba. */
+.submenu {
+  display: grid;
+  grid-template-columns: 1fr;   /* una columna: el menú es estrecho y con dos
+                                   los nombres se parten en dos líneas */
+  gap: .4rem;
+  padding: .4rem .2rem .2rem;
+}
+.menu-tema {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  width: 100%;
+  padding: .55rem .6rem;
+  background: transparent;
+  border: 1.5px solid var(--linea);
+  border-radius: 10px;
+  color: var(--tinta);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .08s;
+}
+.menu-tema:hover { background: color-mix(in srgb, var(--acento) 8%, transparent); }
+.menu-tema:active { transform: scale(.97); }
+.menu-tema.activa {
+  border-color: var(--acento);
+  background: color-mix(in srgb, var(--acento) 14%, transparent);
+}
+
+.tema-muestra {
+  width: 34px; height: 34px; flex-shrink: 0;
+  border-radius: 50%;
+  /* inline-flex y no flex: por dentro centra igual, pero por fuera no es de
+     nivel bloque, así que no puede tirar el icono a otra línea cuando lo que lo
+     contiene no sea un contenedor flexible. */
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tema-muestra svg { width: 18px; height: 18px; }
+.tema-muestra.oscuro { background: #0a0a0f; color: #c5cbe3; border: 1px solid #2a2a36; }
+/* Los mismos degradados que en l-notes: si el tema se llama igual, su muestra
+   tiene que ser la misma o parecen dos cosas distintas. */
+.tema-muestra.crystal {
+  background: linear-gradient(140deg, #eaf3fd 0%, #a9c9ea 100%);
+  color: #0060df;
+  border: 1px solid rgba(255,255,255,0.8);
+}
+.tema-muestra.dark-crystal {
+  background: linear-gradient(140deg, #26364a 0%, #0d131b 100%);
+  color: #4da3ff;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.tema-nombre { flex: 1; font-weight: 700; font-size: .9rem; }
+.tema-tic {
+  width: 22px; height: 22px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--acento);
+  color: #fff;
+  display: none;
+  align-items: center; justify-content: center;
+}
+.tema-tic svg { width: 14px; height: 14px; }
+.menu-tema.activa .tema-tic { display: flex; }
+
+/* ── La ventana del tema ─────────────────────────────────────────────────────
+   Se abre desde el menú de usuario. Centrada y por encima de todo: el velo
+   captura el clic de fuera, que es la forma que espera cualquiera de cerrar
+   algo así sin buscar el botón. */
+.tema-velo {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(6, 12, 22, .5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+/* Con más peso que el display:flex de arriba, o `hidden` no la ocultaría. */
+.tema-velo[hidden] { display: none; }
+
+.tema-ventana {
+  width: min(22rem, 100%);
+  background: var(--superficie-alta);
+  color: var(--tinta);
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  padding: .9rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .38);
+}
+.tema-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  margin: .1rem .2rem .7rem;
+}
+.tema-barra b { font-size: 1.05rem; }
+.tema-cerrar {
+  background: transparent;
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  color: var(--acento);
+  font: inherit;
+  font-weight: 600;
+  padding: .3rem .7rem;
+  cursor: pointer;
+}
+
+/* El icono del tema puesto, junto a "Tema" en el menú. Es la misma muestra del
+   selector a menor tamaño: reconocer el tema por su icono es más rápido que
+   leer su nombre, y además no crece cuando el nombre es largo. */
+.tema-mini { width: 22px; height: 22px; flex: 0 0 auto; }
+.tema-mini svg { width: 13px; height: 13px; }
+
+/* La entrada "Tema" y su icono, en la misma línea.
+   El botón lleva también .menu-opcion, que declara display:block más abajo en
+   este mismo fichero y, a igualdad de peso, ganaba por orden. Se sube el peso
+   aquí en lugar de reordenar: reordenar arregla hoy y deja la trampa puesta
+   para quien mañana añada algo a .menu-opcion. */
+.menu-opcion.menu-desplegar,
+.menu-desplegar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
