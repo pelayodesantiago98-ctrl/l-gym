@@ -1,6 +1,6 @@
 {
   "name": "l-gym",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "description": "Rutinas de gimnasio y progreso",
   "main": "servidor.js",
@@ -13,4 +13,3 @@
     "sharp": "^0.34.1"
   }
 }
-
