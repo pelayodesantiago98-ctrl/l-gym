@@ -86,6 +86,32 @@ if (!db.prepare('PRAGMA table_info(grupos)').all().some((c) => c.name === 'diari
   db.exec('ALTER TABLE grupos ADD COLUMN diario INTEGER NOT NULL DEFAULT 0');
 }
 
+/*
+ * La biblioteca de movimientos importada de free-exercise-db (dominio publico).
+ *
+ * Va en su propia tabla y no en `ejercicios` porque son cosas distintas: un
+ * ejercicio pertenece al grupo de alguien y acumula series; esto es un fichero
+ * de consulta que no es de nadie. Se identifican por `clave`, la del dataset,
+ * para poder reimportar sin duplicar.
+ */
+db.exec(`
+CREATE TABLE IF NOT EXISTS catalogo (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  clave         TEXT NOT NULL UNIQUE,
+  nombre        TEXT NOT NULL,
+  nombre_en     TEXT NOT NULL DEFAULT '',
+  tipo          TEXT NOT NULL CHECK (tipo IN ('calentamiento', 'ejercicio')),
+  imagen        TEXT,
+  musculos      TEXT NOT NULL DEFAULT '',
+  secundarios   TEXT NOT NULL DEFAULT '',
+  equipo        TEXT NOT NULL DEFAULT '',
+  categoria     TEXT NOT NULL DEFAULT '',
+  nivel         TEXT NOT NULL DEFAULT '',
+  instrucciones TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_catalogo_busca ON catalogo (tipo, nombre);
+`);
+
 const ahora = () => new Date().toISOString();
 
 // ------------------------------------------------------------------ grupos
@@ -430,7 +456,15 @@ function copiarRutina(dueno, id) {
  * ya hay subida, la pusiera quien la pusiera. Salen primero los que tienen
  * foto, y despues los mas repetidos, que son los que mas gente usa.
  */
-const buscarCatalogo = (tipo, patron) => db.prepare(`
+const TOPE_SUGERENCIAS = 8;
+
+/*
+ * Primero lo de la casa y despues la biblioteca, y ese orden importa: la foto
+ * que subio alguien es de la maquina que hay en ESE gimnasio, y vale mas que
+ * el modelo generico del dataset. La biblioteca solo rellena lo que sobra.
+ */
+const buscarCatalogo = (tipo, patron) => {
+  const casa = db.prepare(`
   SELECT e.nombre, e.tipo, COUNT(*) AS veces, MAX(e.series) AS series,
          (SELECT e2.imagen FROM ejercicios e2
            WHERE e2.nombre = e.nombre COLLATE NOCASE AND e2.tipo = e.tipo
@@ -447,14 +481,43 @@ const buscarCatalogo = (tipo, patron) => db.prepare(`
   LIMIT 8
 `).all(tipo, patron);
 
-// Que esa foto sea de verdad una foto de la casa, y no una ruta inventada en
-// la peticion.
-const existeImagen = (nombre) => !!db.prepare(
+  const hueco = TOPE_SUGERENCIAS - casa.length;
+  if (hueco <= 0) return casa;
+
+  // Por longitud: los nombres cortos son los canonicos ("Curl con barra" antes
+  // que "Curl con barra tumbado en banco alto").
+  const biblioteca = db.prepare(`
+    SELECT nombre, tipo, 0 AS veces, 3 AS series, imagen, '' AS notas,
+           musculos, equipo, nivel, 1 AS biblioteca
+      FROM catalogo
+     WHERE tipo = ? AND nombre LIKE ?
+     ORDER BY LENGTH(nombre), nombre COLLATE NOCASE
+     LIMIT ?
+  `).all(tipo, patron, hueco + TOPE_SUGERENCIAS);
+
+  const yaEsta = new Set(casa.map((m) => m.nombre.toLowerCase()));
+  return casa.concat(
+    biblioteca.filter((m) => !yaEsta.has(m.nombre.toLowerCase())).slice(0, hueco)
+  );
+};
+
+// Que esa foto sea de verdad una foto de la casa o de la biblioteca, y no una
+// ruta inventada en la peticion.
+const enBiblioteca = (nombre) => !!db.prepare(
+  'SELECT 1 FROM catalogo WHERE imagen = ? LIMIT 1'
+).get(nombre);
+
+const existeImagen = (nombre) => enBiblioteca(nombre) || !!db.prepare(
   'SELECT 1 FROM ejercicios WHERE imagen = ? LIMIT 1'
 ).get(nombre);
 
-// Si otro ejercicio comparte la foto, el fichero no se borra del disco.
-const imagenCompartida = (nombre, exceptoId) => !!db.prepare(
+/*
+ * Si otro ejercicio comparte la foto, el fichero no se borra del disco.
+ *
+ * Las de la biblioteca cuentan siempre como compartidas: son de todos, y que
+ * alguien borre su ejercicio no puede dejar al resto sin la foto del catalogo.
+ */
+const imagenCompartida = (nombre, exceptoId) => enBiblioteca(nombre) || !!db.prepare(
   'SELECT 1 FROM ejercicios WHERE imagen = ? AND id <> ? LIMIT 1'
 ).get(nombre, exceptoId);
 

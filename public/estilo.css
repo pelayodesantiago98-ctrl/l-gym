@@ -507,17 +507,26 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
 
 /* --------------------------------------------------------------- series */
 
+/* El boton de anadir serie iba pegado a la ultima fila, sin ningun hueco,
+   cuando las propias filas se separan entre si. Se despega un poco mas que
+   ellas para que se lea como accion y no como una fila mas. */
+.series + .boton-lino { margin-top: .55rem; }
+
 .series { margin-top: .8rem; display: grid; gap: .35rem; }
 
 /* Anchos con tope: con 1fr el campo de peso se estiraba a media pantalla en
    escritorio, y un número de tres cifras no necesita 600 px. */
 .serie {
   display: grid;
-  grid-template-columns: 1.6rem minmax(min(4.5rem, 100%), 8rem) 4.5rem 24px;
+  grid-template-columns: 1.6rem minmax(min(4.5rem, 100%), 8rem) 4.5rem 3rem;
   gap: .5rem;
   align-items: center;
   justify-content: start;
 }
+/* La ultima columna mide por su rotulo, no por la casilla: con 24px justos,
+   HECHA (44px de texto) se desbordaba y quedaba flotando a la derecha de las
+   casillas. Ahora la casilla se centra en la columna y ambos coinciden. */
+.serie > :last-child { justify-self: center; }
 .serie input { padding: .5rem .55rem; }
 .serie-num { color: var(--tinta-3); font-variant-numeric: tabular-nums; font-size: .9rem; }
 
@@ -682,7 +691,7 @@ input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
   .pestanas { display: none; }
   .menu-usuario { margin-left: auto; }
   .cabecera-dia { grid-template-columns: 1fr; }
-  .serie { grid-template-columns: 1.4rem 1fr 3.8rem 24px; gap: .4rem; }
+  .serie { grid-template-columns: 1.4rem 1fr 3.8rem 3rem; gap: .4rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

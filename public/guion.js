@@ -460,7 +460,7 @@ function buscadorCatalogo(input, tipo, alElegir) {
     if (!movimientos.length) return cerrar();
 
     caja.replaceChildren();
-    caja.append(crear('p', 'sugerencias-titulo', 'Ya existen:'));
+    caja.append(crear('p', 'sugerencias-titulo', 'Sugerencias:'));
     movimientos.forEach((m) => {
       const b = crear('button', 'sugerencia');
       b.type = 'button';
@@ -478,9 +478,16 @@ function buscadorCatalogo(input, tipo, alElegir) {
       const txt = crear('span', 'sugerencia-texto');
       txt.append(crear('b', null, m.nombre));
       const pistas = [];
-      if (m.imagen) pistas.push('con foto');
-      if (tipo === 'ejercicio' && m.series) pistas.push(`${m.series} series`);
-      if (m.veces > 1) pistas.push(`lo usan ${m.veces}`);
+      if (m.biblioteca) {
+        // De la biblioteca no lo ha hecho nadie todavia, asi que lo util es
+        // saber a que musculo va y con que material se hace.
+        if (m.musculos) pistas.push(m.musculos);
+        if (m.equipo) pistas.push(m.equipo);
+      } else {
+        if (m.imagen) pistas.push('con foto');
+        if (tipo === 'ejercicio' && m.series) pistas.push(`${m.series} series`);
+        if (m.veces > 1) pistas.push(`lo usan ${m.veces}`);
+      }
       if (pistas.length) txt.append(crear('small', null, pistas.join(' · ')));
       b.append(txt);
 
