@@ -9,7 +9,10 @@
 <link rel=icon href=/img/icono-32.png sizes=32x32>
 <link rel=icon href=/img/icono-192.png sizes=192x192>
 <link rel=apple-touch-icon href=/img/icono-180.png>
-<link rel=stylesheet href=/estilo.css>
+<link rel=stylesheet href=/estilo.css?v=1787399311>
+<!-- La capa de acabado: va DESPUES de la hoja de la casa, que es lo que le
+     permite anadir sin redefinir. -->
+<link rel=stylesheet href=/mejoras.css?v=1787399315>
 <!-- El tema no se aplica aquí: lo marca el servidor en el <html> al servir
      esta página, que es lo único que evita el fogonazo del tema por defecto. -->
 </head>
@@ -30,14 +33,14 @@
       <span class=menu-quien><b id=menu-nombre>…</b><small>L-gym</small></span>
 
       <!-- Enlace externo de verdad: sale del subdominio. -->
-      <a class=menu-opcion role=menuitem href='https://lepayimio.es/'><svg class=menu-icono viewBox="0 0 24 24" aria-hidden=true><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>Inicio de lepayimio</a>
+      <a class=menu-opcion role=menuitem href='https://lepayimio.es/'><svg class="menu-icono ico ico-inicio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-tejado" d="M5 12l-2 0l9 -9l9 9l-2 0"/><path class="ico-casa" d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path class="ico-puerta" d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg>Inicio de lepayimio</a>
 
       <hr class=menu-linea>
       <div class=menu-vistas>
-        <button type=button class=menu-opcion role=menuitem data-vista=hoy><svg class=menu-icono viewBox="0 0 24 24" aria-hidden=true><path d="M20.6 6.7l-1.3-1.3-1.4 1.4-1.4-1.4-1.4 1.4L9 12.9l-1.4-1.4-1.4 1.4L4.8 11.5 3.4 12.9l1.4 1.4-1.4 1.4 1.3 1.3 1.4-1.4 1.4 1.4 1.4-1.4 6.1-6.1 1.4 1.4 1.4-1.4 1.4 1.4 1.3-1.3-1.4-1.4z"/></svg>Entreno</button>
-        <button type=button class=menu-opcion role=menuitem data-vista=rutinas><svg class=menu-icono viewBox="0 0 24 24" aria-hidden=true><path d="M4 5h3v3H4V5zm5 1h11v1.5H9V6zM4 10.5h3v3H4v-3zm5 1h11V13H9v-1.5zM4 16h3v3H4v-3zm5 1h11v1.5H9V17z"/></svg>Rutinas</button>
-        <button type=button class=menu-opcion role=menuitem data-vista=progreso><svg class=menu-icono viewBox="0 0 24 24" aria-hidden=true><path d="M4 19V5h1.5v12.5H19V19H4zm3-3l3.5-4.5 2.5 3L18 8l1.2 1L13.2 17l-2.6-3.1L8 17l-1-1z"/></svg>Progreso</button>
-        <button type=button class=menu-opcion role=menuitem data-vista=registro><svg class=menu-icono viewBox="0 0 24 24" aria-hidden=true><path d="M7 2v2H5.5A1.5 1.5 0 004 5.5v13A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0018.5 4H17V2h-2v2H9V2H7zm-1.5 7h13v9.5h-13V9zm2 2v2h2v-2h-2zm4 0v2h2v-2h-2z"/></svg>Registro</button>
+        <button type=button class=menu-opcion role=menuitem data-vista=hoy><svg class="menu-icono ico ico-pesa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-disco ico-disco-izq" d="M4 10v4"/><path class="ico-disco ico-disco-izq" d="M7 7v10"/><path class="ico-barra-pesa" d="M7 12h10"/><path class="ico-disco ico-disco-der" d="M17 7v10"/><path class="ico-disco ico-disco-der" d="M20 10v4"/></svg>Entreno</button>
+        <button type=button class=menu-opcion role=menuitem data-vista=rutinas><svg class="menu-icono ico ico-lista" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-renglon ico-renglon-1" d="M9 6l11 0"/><path class="ico-renglon ico-renglon-2" d="M9 12l11 0"/><path class="ico-renglon ico-renglon-3" d="M9 18l11 0"/><g class="ico-puntos"><path d="M5 6l0 .01"/><path d="M5 12l0 .01"/><path d="M5 18l0 .01"/></g></svg>Rutinas</button>
+        <button type=button class=menu-opcion role=menuitem data-vista=progreso><svg class="menu-icono ico ico-grafica" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-eje" d="M4 19l16 0"/><path class="ico-curva" d="M4 15l4 -6l4 2l4 -5l4 4"/></svg>Progreso</button>
+        <button type=button class=menu-opcion role=menuitem data-vista=registro><svg class="menu-icono ico ico-calendario" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/><path class="ico-clavija" d="M16 3v4"/><path class="ico-clavija" d="M8 3v4"/><path class="ico-raya" d="M4 11h16"/></svg>Registro</button>
       </div>
 
       <hr class=menu-linea>
@@ -46,31 +49,31 @@
       <button type=button class='menu-opcion menu-desplegar' id=abrir-temas
               aria-expanded=false aria-controls=submenu-temas>
         <span class=menu-etiqueta>Tema</span>
-        <span class="tema-muestra tema-mini oscuro" id="tema-actual" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></span>
-        <svg class=menu-flecha viewBox='0 0 24 24' aria-hidden=true><path d='M8.6 5.6 15 12l-6.4 6.4-1.4-1.4L12.2 12 7.2 7z'/></svg>
+        <span class="tema-muestra tema-mini oscuro" id="tema-actual" aria-hidden="true"><svg class="ico ico-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg></span>
+        <svg class="menu-flecha ico ico-flecha-der" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg>
       </button>
 
       <div class="submenu" id="submenu-temas" role="group" aria-label="Tema" hidden>
         <button type="button" class="menu-tema" role="menuitemradio" data-tema="oscuro">
           <span class="tema-muestra oscuro">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+            <svg class="ico ico-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg>
           </span>
           <span class="tema-nombre">Oscuro</span>
-          <span class="tema-tic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+          <span class="tema-tic"><svg class="ico ico-tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-marca" d="M5 12l5 5l10 -10"/></svg></span>
         </button>
         <button type="button" class="menu-tema" role="menuitemradio" data-tema="crystal">
           <span class="tema-muestra crystal">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>
+            <svg class="ico ico-capas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-capa-alta" d="M12 6l-8 4l8 4l8 -4l-8 -4"/><path class="ico-capa-baja" d="M4 14l8 4l8 -4"/></svg>
           </span>
           <span class="tema-nombre">Crystal</span>
-          <span class="tema-tic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+          <span class="tema-tic"><svg class="ico ico-tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-marca" d="M5 12l5 5l10 -10"/></svg></span>
         </button>
         <button type="button" class="menu-tema" role="menuitemradio" data-tema="dark-crystal">
           <span class="tema-muestra dark-crystal">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5zm0 12.2l7.1-3.95L21 12l-9 5-9-5 1.9-1.05L12 15.2z"/></svg>
+            <svg class="ico ico-capas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-capa-alta" d="M12 6l-8 4l8 4l8 -4l-8 -4"/><path class="ico-capa-baja" d="M4 14l8 4l8 -4"/></svg>
           </span>
           <span class="tema-nombre">Dark Crystal</span>
-          <span class="tema-tic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+          <span class="tema-tic"><svg class="ico ico-tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-marca" d="M5 12l5 5l10 -10"/></svg></span>
         </button>
       </div>
 
@@ -78,7 +81,7 @@
       <!-- Formulario y no fetch: el portal responde con una redirección a su
            pantalla de entrada, y así el navegador la sigue solo. -->
       <form method=post action=/salir class=menu-forma>
-        <button type=submit class=menu-opcion role=menuitem><svg class=menu-icono viewBox="0 0 24 24" aria-hidden=true><path d="M10.5 3.5v2H6.2v13h4.3v2H4.2v-17h6.3zm4.6 3.1l5.4 5.4-5.4 5.4-1.4-1.4 3-3H8.6v-2h8.1l-3-3 1.4-1.4z"/></svg>Desconectarse</button>
+        <button type=submit class=menu-opcion role=menuitem><svg class="menu-icono ico ico-salir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-puerta" d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path class="ico-flecha" d="M9 12h12"/><path class="ico-flecha" d="M18 15l3 -3l-3 -3"/></svg>Desconectarse</button>
       </form>
     </div>
   </div>
@@ -195,6 +198,7 @@
 
 
 <script src=/guion.js></script>
+<script src=/mejoras.js defer></script>
 </body>
 </html>
 
